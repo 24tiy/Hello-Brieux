@@ -57,7 +57,7 @@
           <label for="broker">Broker</label>
           <div class="control"><input id="broker" type="text" placeholder="Saisissez le broker (ex. AFOTEST)" /></div>
           <div class="hint">Aucune valeur par défaut. Ce champ est requis.</div>
-          <div class="error" id="brokerErr">Le broker est requis.</div>
+          <div class="error" id="brokerErr">broker est vide</div>
         </div>
       </div>
 
@@ -201,7 +201,18 @@
 
     function downloadOut() {
       const content = outEl.value || '';
-      const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
+      // Force a real CSV download name across browsers (incl. Safari)
+      const file = new File([content], currentFilename || 'output.csv', { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(file);
+      const a = document.createElement('a');
+      a.href = url;
+      a.setAttribute('download', file.name);
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(url);
+      a.remove();
+    });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
