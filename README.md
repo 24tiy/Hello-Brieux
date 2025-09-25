@@ -1,6 +1,6 @@
 # Hello Brieux!
 
-Une petite appli web pour transformer une liste d’emails en lignes formatées.
+Une petite appli web pour transformer une liste d’emails en lignes formatées
 
 ## Utilisation
 1. Entrer une **date** (AAAA-MM-JJ).
