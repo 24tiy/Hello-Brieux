@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hello Brieux!</title>
+  <style>
+    :root { --pad: 14px; --radius: 14px; }
+    html, body { height: 100%; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; margin: 0; background: #ffffff; color: #111111; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 28px var(--pad) 48px; }
+    h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: 0.2px; }
+    p.sub { margin: 0 0 18px; color: #333; }
+    .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: var(--radius); padding: var(--pad); box-shadow: 0 6px 16px rgba(0,0,0,0.06); }
+    label { display:block; font-weight: 600; margin: 14px 0 8px; }
+    input[type="text"], input[type="date"], textarea, select {
+      width: 100%; padding: 12px; background: #ffffff; color: #111111; border: 1px solid #d1d5db; border-radius: 10px; outline: none;
+    }
+    input::placeholder, textarea::placeholder { color: #6b7280; }
+    textarea { min-height: 160px; resize: vertical; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    button { appearance: none; border: 1px solid #d1d5db; background: #f9fafb; color: #111111; padding: 10px 14px; border-radius: 10px; cursor: pointer; font-weight: 600; }
+    button.primary { background: #111827; color: #ffffff; border-color: #111827; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .hint { font-size: 12px; color: #6b7280; margin-top: 6px; }
+    .outBox { margin-top: 16px; }
+    .stat { margin-top: 6px; font-size: 13px; color: #374151; }
+    .footer { margin-top: 28px; color:#6b7280; font-size:12px; text-align:center; }
+    .inline { display:flex; gap:10px; align-items:center; flex-wrap: wrap; }
+    .chip { padding:4px 8px; border:1px solid #d1d5db; border-radius: 9999px; background:#ffffff; color:#374151; font-size:12px; }
+    .outBox textarea { background:#f9fafb; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Hello Brieux!</h1>
+    <p class="sub">Format de la ligne : <code>PR|FR|&lt;Courtier&gt;|||||&lt;email&gt;||||FR|CRG|&lt;Date&gt;|True||False||&lt;Date&gt;</code></p>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <label for="date">Date (AAAA-MM-JJ)</label>
+          <input id="date" type="date" />
+          <div class="hint">La date est toujours formatée en <strong>AAAA-MM-JJ</strong> (ex. 2025-09-23) et utilisée pour les deux champs date.</div>
+        </div>
+        <div>
+          <label for="broker">Courtier</label>
+          <input id="broker" type="text" placeholder="Saisissez le courtier (ex. AFOTEST)" />
+          <div class="hint">Aucune valeur par défaut. Ce champ est requis.</div>
+        </div>
+      </div>
+
+      <label for="emails">Emails (un par ligne, ou séparés par virgule/point-virgule/espace)</label>
+      <textarea id="emails" placeholder="ivan@yopmail.com\npetra@example.org, user@test.com\n…"></textarea>
+      <div class="hint">Les doublons sont automatiquement supprimés. Les espaces superflus sont nettoyés.</div>
+
+      <div class="btns">
+        <button class="primary" id="gen">Générer les lignes</button>
+        <button id="copy" disabled>Copier</button>
+        <button id="download" disabled>Télécharger « ouptut.txt »</button>
+        <button id="clear">Effacer</button>
+      </div>
+
+      <div class="outBox">
+        <label for="output">Résultat</label>
+        <textarea id="output" readonly placeholder="Les lignes générées apparaîtront ici…"></textarea>
+        <div class="stat" id="stat"></div>
+      </div>
+    </div>
+
+    <div class="footer">Fabriqué avec ❤️ pour automatiser la création de lignes d'export.</div>
+  </div>
+
+  <script>
+    const dateEl = document.getElementById('date');
+    const brokerEl = document.getElementById('broker');
+    const emailsEl = document.getElementById('emails');
+    const outEl = document.getElementById('output');
+    const statEl = document.getElementById('stat');
+    const genBtn = document.getElementById('gen');
+    const copyBtn = document.getElementById('copy');
+    const dlBtn = document.getElementById('download');
+    const clearBtn = document.getElementById('clear');
+
+    function toISOyyyyMMdd(d) {
+      // Force AAAA-MM-JJ regardless of locale
+      const dt = new Date(d);
+      if (isNaN(dt)) return '';
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth()+1).padStart(2, '0');
+      const day = String(dt.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function parseEmails(raw) {
+      // Split by line, comma, semicolon, spaces; trim; toLowerCase; basic email check; dedupe
+      const parts = raw.split(/[\n,;\s]+/g).map(s => s.trim().toLowerCase()).filter(Boolean);
+      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const seen = new Set();
+      const list = [];
+      for (const e of parts) {
+        if (!emailRe.test(e)) continue;
+        if (!seen.has(e)) { seen.add(e); list.push(e); }
+      }
+      return list;
+    }
+
+    function buildLine(email, broker, dateStr) {
+      return `PR|FR|${broker}|||||${email}||||FR|CRG|${dateStr}|True||False||${dateStr}`;
+    }
+
+    function generate() {
+      const broker = (brokerEl.value || '').trim();
+      const rawDate = dateEl.value;
+      const dateStr = toISOyyyyMMdd(rawDate);
+      const emails = parseEmails(emailsEl.value || '');
+
+      if (!broker) { alert('Veuillez saisir le courtier.'); return; }
+      if (!dateStr) { alert('Veuillez choisir une date (AAAA-MM-JJ).'); return; }
+      if (emails.length === 0) { alert('Veuillez saisir au moins un email valide.'); return; }
+
+      const lines = emails.map(e => buildLine(e, broker, dateStr));
+      outEl.value = lines.join('\n');
+      statEl.textContent = `${emails.length} email(s) traités (doublons supprimés).`;
+      copyBtn.disabled = false;
+      dlBtn.disabled = false;
+    }
+
+    function copyOut() {
+      if (!outEl.value) return;
+      outEl.select();
+      document.execCommand('copy');
+      copyBtn.textContent = 'Copié!';
+      setTimeout(() => (copyBtn.textContent = 'Copier'), 1200);
+    }
+
+    function downloadOut() {
+      const content = outEl.value || '';
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'ouptut.txt'; // demandé par l'utilisateur
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(url);
+      a.remove();
+    }
+
+    function clearAll() {
+      outEl.value = '';
+      statEl.textContent = '';
+      copyBtn.disabled = true;
+      dlBtn.disabled = true;
+    }
+
+    genBtn.addEventListener('click', generate);
+    copyBtn.addEventListener('click', copyOut);
+    dlBtn.addEventListener('click', downloadOut);
+    clearBtn.addEventListener('click', clearAll);
+  </script>
+</body>
+</html>
