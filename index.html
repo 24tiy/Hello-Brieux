@@ -12,24 +12,33 @@
     h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: 0.2px; }
     p.sub { margin: 0 0 18px; color: #333; }
     .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: var(--radius); padding: var(--pad); box-shadow: 0 6px 16px rgba(0,0,0,0.06); }
+
     label { display:block; font-weight: 600; margin: 14px 0 8px; }
-    input[type="text"], input[type="date"], textarea, select {
-      width: 100%; padding: 12px; background: #ffffff; color: #111111; border: 1px solid #d1d5db; border-radius: 10px; outline: none;
-    }
-    input::placeholder, textarea::placeholder { color: #6b7280; }
-    textarea { min-height: 160px; resize: vertical; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 720px) { .row { grid-template-columns: 1fr; } }
+
+    /* unified control sizes */
+    .control { width: 100%; }
+    .control input, .control textarea, .control select {
+      width: 100%; padding: 12px 12px; background: #ffffff; color: #111111; border: 1px solid #d1d5db; border-radius: 10px; outline: none;
+      height: 44px; box-sizing: border-box;
+    }
+    .control input[type="date"] { min-height: 44px; }
+    .control textarea { min-height: 160px; resize: vertical; height: auto; }
+
     .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
-    button { appearance: none; border: 1px solid #d1d5db; background: #f9fafb; color: #111111; padding: 10px 14px; border-radius: 10px; cursor: pointer; font-weight: 600; }
+    button { appearance: none; border: 1px solid #d1d5db; background: #f9fafb; color: #111111; padding: 10px 14px; border-radius: 10px; cursor: pointer; font-weight: 600; height: 40px; }
     button.primary { background: #111827; color: #ffffff; border-color: #111827; }
     button:disabled { opacity: .5; cursor: not-allowed; }
+
     .hint { font-size: 12px; color: #6b7280; margin-top: 6px; }
+    .error { font-size: 12px; color: #b91c1c; margin-top: 6px; display:none; }
+
     .outBox { margin-top: 16px; }
+    .outBox textarea { background:#f9fafb; border: 1px solid #d1d5db; border-radius: 10px; width:100%; min-height: 160px; padding:12px; box-sizing: border-box; }
+
     .stat { margin-top: 6px; font-size: 13px; color: #374151; }
     .footer { margin-top: 28px; color:#6b7280; font-size:12px; text-align:center; }
-    .inline { display:flex; gap:10px; align-items:center; flex-wrap: wrap; }
-    .chip { padding:4px 8px; border:1px solid #d1d5db; border-radius: 9999px; background:#ffffff; color:#374151; font-size:12px; }
-    .outBox textarea { background:#f9fafb; }
   </style>
 </head>
 <body>
@@ -39,21 +48,26 @@
 
     <div class="card">
       <div class="row">
-        <div>
+        <div class="field">
           <label for="date">Date (AAAA-MM-JJ)</label>
-          <input id="date" type="date" />
+          <div class="control"><input id="date" type="date" placeholder="aaaa-mm-jj" /></div>
           <div class="hint">La date est toujours formatée en <strong>AAAA-MM-JJ</strong> (ex. 2025-09-23) et utilisée pour les deux champs date.</div>
+          <div class="error" id="dateErr">Choisissez une date valide.</div>
         </div>
-        <div>
+        <div class="field">
           <label for="broker">Broker</label>
-          <input id="broker" type="text" placeholder="Saisissez le broker (ex. AFOTEST)" />
+          <div class="control"><input id="broker" type="text" placeholder="Saisissez le broker (ex. AFOTEST)" /></div>
           <div class="hint">Aucune valeur par défaut. Ce champ est requis.</div>
+          <div class="error" id="brokerErr">Le broker est requis.</div>
         </div>
       </div>
 
       <label for="emails">Emails (un par ligne, ou séparés par virgule/point-virgule/espace)</label>
-      <textarea id="emails" placeholder="ivan@yopmail.com\npetra@example.org, user@test.com\n…"></textarea>
+      <div class="control">
+        <textarea id="emails" placeholder="ivan@yopmail.com\npetra@example.org, user@test.com\n…"></textarea>
+      </div>
       <div class="hint">Les doublons sont automatiquement supprimés. Les espaces superflus sont nettoyés.</div>
+      <div class="error" id="emailErr">Aucun e-mail valide trouvé. Exemple : <em>user@example.com</em>.</div>
 
       <div class="btns">
         <button class="primary" id="gen">Générer les lignes</button>
@@ -78,6 +92,11 @@
     const emailsEl = document.getElementById('emails');
     const outEl = document.getElementById('output');
     const statEl = document.getElementById('stat');
+
+    const dateErr = document.getElementById('dateErr');
+    const brokerErr = document.getElementById('brokerErr');
+    const emailErr = document.getElementById('emailErr');
+
     const genBtn = document.getElementById('gen');
     const copyBtn = document.getElementById('copy');
     const dlBtn = document.getElementById('download');
@@ -88,7 +107,7 @@
       const dt = new Date(d);
       if (isNaN(dt)) return '';
       const y = dt.getFullYear();
-      const m = String(dt.getMonth()+1).padStart(2, '0');
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
       const day = String(dt.getDate()).padStart(2, '0');
       return `${y}-${m}-${day}`;
     }
@@ -99,7 +118,7 @@
       const seen = new Set();
       const list = [];
       for (const e of parts) {
-        if (!emailRe.test(e)) continue;
+        if (!emailRe.test(e)) continue; // skip invalid
         if (!seen.has(e)) { seen.add(e); list.push(e); }
       }
       return list;
@@ -109,15 +128,23 @@
       return `PR|FR|${broker}|||||${email}||||FR|CRG|${dateStr}|True||False||${dateStr}`;
     }
 
+    function show(el) { el && (el.style.display = 'block'); }
+    function hide(el) { el && (el.style.display = 'none'); }
+
+    function validate(broker, dateStr, emails) {
+      let ok = true;
+      if (!broker) { show(brokerErr); ok = false; } else { hide(brokerErr); }
+      if (!dateStr) { show(dateErr); ok = false; } else { hide(dateErr); }
+      if (emails.length === 0) { show(emailErr); ok = false; } else { hide(emailErr); }
+      return ok;
+    }
+
     function generate() {
       const broker = (brokerEl.value || '').trim();
-      const rawDate = dateEl.value;
-      const dateStr = toISOyyyyMMdd(rawDate);
+      const dateStr = toISOyyyyMMdd(dateEl.value);
       const emails = parseEmails(emailsEl.value || '');
 
-      if (!broker) { alert('Veuillez saisir le broker.'); return; }
-      if (!dateStr) { alert('Veuillez choisir une date (AAAA-MM-JJ).'); return; }
-      if (emails.length === 0) { alert('Veuillez saisir au moins un email valide.'); return; }
+      if (!validate(broker, dateStr, emails)) return;
 
       const lines = emails.map(e => buildLine(e, broker, dateStr));
       outEl.value = lines.join('\n');
@@ -130,8 +157,8 @@
       if (!outEl.value) return;
       outEl.select();
       document.execCommand('copy');
-      copyBtn.textContent = 'Copié!';
-      setTimeout(() => (copyBtn.textContent = 'Copier'), 1200);
+      const old = this.textContent; this.textContent = 'Copié!';
+      setTimeout(() => (this.textContent = old), 1200);
     }
 
     function downloadOut() {
@@ -150,13 +177,14 @@
     function clearAll() {
       outEl.value = '';
       statEl.textContent = '';
+      hide(dateErr); hide(brokerErr); hide(emailErr);
       copyBtn.disabled = true;
       dlBtn.disabled = true;
     }
 
     genBtn.addEventListener('click', generate);
-    copyBtn.addEventListener('click', copyOut);
-    dlBtn.addEventListener('click', downloadOut);
+    document.getElementById('copy').addEventListener('click', copyOut);
+    document.getElementById('download').addEventListener('click', downloadOut);
     clearBtn.addEventListener('click', clearAll);
   </script>
 </body>
