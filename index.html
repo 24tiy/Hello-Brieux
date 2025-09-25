@@ -35,7 +35,7 @@
 <body>
   <div class="wrap">
     <h1>Hello Brieux!</h1>
-    <p class="sub">Format de la ligne : <code>PR|FR|&lt;Courtier&gt;|||||&lt;email&gt;||||FR|CRG|&lt;Date&gt;|True||False||&lt;Date&gt;</code></p>
+    <p class="sub">Format de la ligne : <code>PR|FR|&lt;Broker&gt;|||||&lt;email&gt;||||FR|CRG|&lt;Date&gt;|True||False||&lt;Date&gt;</code></p>
 
     <div class="card">
       <div class="row">
@@ -45,8 +45,8 @@
           <div class="hint">La date est toujours formatée en <strong>AAAA-MM-JJ</strong> (ex. 2025-09-23) et utilisée pour les deux champs date.</div>
         </div>
         <div>
-          <label for="broker">Courtier</label>
-          <input id="broker" type="text" placeholder="Saisissez le courtier (ex. AFOTEST)" />
+          <label for="broker">Broker</label>
+          <input id="broker" type="text" placeholder="Saisissez le broker (ex. AFOTEST)" />
           <div class="hint">Aucune valeur par défaut. Ce champ est requis.</div>
         </div>
       </div>
@@ -69,7 +69,7 @@
       </div>
     </div>
 
-    <div class="footer">Fabriqué avec ❤️ pour automatiser la création de lignes d'export.</div>
+    <div class="footer">Fabriqué avec ❤️ par 24tiy pour automatiser la création de lignes d'export.</div>
   </div>
 
   <script>
@@ -84,7 +84,7 @@
     const clearBtn = document.getElementById('clear');
 
     function toISOyyyyMMdd(d) {
-      // Force AAAA-MM-JJ regardless of locale
+      // Toujours renvoyer AAAA-MM-JJ
       const dt = new Date(d);
       if (isNaN(dt)) return '';
       const y = dt.getFullYear();
@@ -94,7 +94,6 @@
     }
 
     function parseEmails(raw) {
-      // Split by line, comma, semicolon, spaces; trim; toLowerCase; basic email check; dedupe
       const parts = raw.split(/[\n,;\s]+/g).map(s => s.trim().toLowerCase()).filter(Boolean);
       const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       const seen = new Set();
@@ -116,7 +115,7 @@
       const dateStr = toISOyyyyMMdd(rawDate);
       const emails = parseEmails(emailsEl.value || '');
 
-      if (!broker) { alert('Veuillez saisir le courtier.'); return; }
+      if (!broker) { alert('Veuillez saisir le broker.'); return; }
       if (!dateStr) { alert('Veuillez choisir une date (AAAA-MM-JJ).'); return; }
       if (emails.length === 0) { alert('Veuillez saisir au moins un email valide.'); return; }
 
@@ -141,7 +140,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'ouptut.txt'; // demandé par l'utilisateur
+      a.download = 'ouptut.txt';
       document.body.appendChild(a);
       a.click();
       URL.revokeObjectURL(url);
