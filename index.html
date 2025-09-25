@@ -180,7 +180,8 @@
       if (!validate(broker, ymd, emails)) return;
 
       const rows = emails.map(e => buildRow(e, broker, ymd));
-      const csv = [HEADER, ...rows].join('\n');
+      const csv = [HEADER, ...rows].join('
+');
       outEl.value = csv;
       statEl.textContent = `${emails.length} email(s) traités (doublons supprimés).`;
 
@@ -234,7 +235,7 @@
     }
 
     // Valeur par défaut : aujourd'hui (AAAA-MM-JJ)
-    dateEl.value = todayYMD();
+    document.addEventListener('DOMContentLoaded', () => { dateEl.value = todayYMD(); });
 
     genBtn.addEventListener('click', generate);
     document.getElementById('copy').addEventListener('click', copyOut);
