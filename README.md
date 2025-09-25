@@ -41,7 +41,7 @@ PR|FR|<Courtier>|||||<email>||||FR|CRG|<Date>|True||False||<Date>
 1. Créer un dépôt GitHub et y ajouter ce projet.
 2. Mettre le fichier `index.html` à la racine.
 3. Activer **GitHub Pages** dans **Settings → Pages**.
-4. L’application est disponible à l’URL : `https://<ton-compte>.github.io/hello-brieux/`
+4. L’application est disponible à l’URL : `https://24tiy.github.io/hello-brieux/`
 
 ---
 
