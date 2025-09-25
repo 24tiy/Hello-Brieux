@@ -11,7 +11,6 @@
     .wrap { max-width: 980px; margin: 0 auto; padding: 28px var(--pad) 48px; }
     h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: 0.2px; }
     p.sub { margin: 0 0 10px; color: #333; }
-    code.inline { display:inline-block; padding: 2px 6px; border:1px solid #e5e7eb; border-radius: 8px; background:#f9fafb; }
     .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: var(--radius); padding: var(--pad); box-shadow: 0 6px 16px rgba(0,0,0,0.06); }
 
     label { display:block; font-weight: 600; margin: 14px 0 8px; }
@@ -24,7 +23,6 @@
       width: 100%; padding: 12px 12px; background: #ffffff; color: #111111; border: 1px solid #d1d5db; border-radius: 10px; outline: none;
       height: 44px; box-sizing: border-box;
     }
-    .control input[type="date"] { min-height: 44px; }
     .control textarea { min-height: 160px; resize: vertical; height: auto; }
 
     .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
@@ -45,16 +43,15 @@
 <body>
   <div class="wrap">
     <h1>Hello Brieux!</h1>
-    <p class="sub">Fichier CSV (séparateur <code class="inline">|</code>) avec l’en-tête :</p>
-    <p class="sub"><code class="inline">brand_code|country_code|partner_name|title|first_name|last_name|birthdate|email|zip_code|mobil_phone|fix_phone|language_code|collected_mode|creation_date|internal_consent|creation_date_internal_consent|partner_consent|creation_date_partner_consent|last_interaction_date</code></p>
+    <p class="sub">Le fichier téléchargé sera un <strong>CSV</strong> (séparateur <code>|</code>). L’aperçu s’affiche ci‑dessous.</p>
 
     <div class="card">
       <div class="row">
         <div class="field">
           <label for="date">Date (AAAA-MM-JJ)</label>
-          <div class="control"><input id="date" type="date" placeholder="aaaa-mm-jj" /></div>
-          <div class="hint">La date est toujours formatée en <strong>AAAA-MM-JJ</strong> (ex. 2025-09-23) et utilisée pour les deux champs date.</div>
-          <div class="error" id="dateErr">Choisissez une date valide.</div>
+          <div class="control"><input id="date" type="text" inputmode="numeric" placeholder="aaaa-mm-jj" pattern="\d{4}-\d{2}-\d{2}" /></div>
+          <div class="hint">Toujours au format <strong>AAAA-MM-JJ</strong> (ex. 2025-09-23). Utilisée pour les dates des lignes et le nom du fichier.</div>
+          <div class="error" id="dateErr">Date invalide. Format attendu : AAAA-MM-JJ.</div>
         </div>
         <div class="field">
           <label for="broker">Broker</label>
@@ -74,7 +71,7 @@
       <div class="btns">
         <button class="primary" id="gen">Générer le CSV</button>
         <button id="copy" disabled>Copier</button>
-        <button id="download" disabled>Télécharger</button>
+        <button id="download" disabled>Télécharger CSV</button>
         <button id="clear">Effacer</button>
       </div>
 
@@ -89,6 +86,7 @@
   </div>
 
   <script>
+    // Ligne d’en-tête exigée
     const HEADER = 'brand_code|country_code|partner_name|title|first_name|last_name|birthdate|email|zip_code|mobil_phone|fix_phone|language_code|collected_mode|creation_date|internal_consent|creation_date_internal_consent|partner_consent|creation_date_partner_consent|last_interaction_date';
 
     const dateEl = document.getElementById('date');
@@ -108,22 +106,21 @@
 
     let currentFilename = '';
 
-    function toISOyyyyMMdd(d) {
-      const dt = new Date(d);
-      if (isNaN(dt)) return '';
-      const y = dt.getFullYear();
-      const m = String(dt.getMonth() + 1).padStart(2, '0');
-      const day = String(dt.getDate()).padStart(2, '0');
-      return `${y}-${m}-${day}`;
+    function todayYMD() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`; // AAAA-MM-JJ
     }
 
-    function toYYYYMMDD(d) {
-      const dt = new Date(d);
-      if (isNaN(dt)) return '';
-      const y = dt.getFullYear();
-      const m = String(dt.getMonth() + 1).padStart(2, '0');
-      const day = String(dt.getDate()).padStart(2, '0');
-      return `${y}${m}${day}`;
+    function compactYMD(ymd) { return (ymd || '').replaceAll('-', ''); }
+
+    function isValidYMD(ymd) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return false;
+      const [y, m, d] = ymd.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      return dt.getFullYear() === y && (dt.getMonth() + 1) === m && dt.getDate() === d; // vérifie calendrier
     }
 
     function parseEmails(raw) {
@@ -140,13 +137,6 @@
 
     // construit une ligne pipe-delimitée dans l'ordre de l'en-tête
     function buildRow(email, broker, dateStr) {
-      // positions selon l'ancien format fourni par l'utilisateur
-      // 1 brand_code=PR | 2 country_code=FR | 3 partner_name=broker
-      // 4 title='' | 5 first_name='' | 6 last_name='' | 7 birthdate=''
-      // 8 email=email | 9 zip='' | 10 mobil='' | 11 fix=''
-      // 12 language_code=FR | 13 collected_mode=CRG
-      // 14 creation_date=dateStr | 15 internal_consent=True | 16 creation_date_internal_consent=''
-      // 17 partner_consent=False | 18 creation_date_partner_consent='' | 19 last_interaction_date=dateStr
       const cells = [
         'PR',           // brand_code
         'FR',           // country_code
@@ -174,28 +164,28 @@
     function show(el) { el && (el.style.display = 'block'); }
     function hide(el) { el && (el.style.display = 'none'); }
 
-    function validate(broker, dateStr, emails) {
+    function validate(broker, ymd, emails) {
       let ok = true;
       if (!broker) { show(brokerErr); ok = false; } else { hide(brokerErr); }
-      if (!dateStr) { show(dateErr); ok = false; } else { hide(dateErr); }
+      if (!isValidYMD(ymd)) { show(dateErr); ok = false; } else { hide(dateErr); }
       if (emails.length === 0) { show(emailErr); ok = false; } else { hide(emailErr); }
       return ok;
     }
 
     function generate() {
       const broker = (brokerEl.value || '').trim();
-      const dateStr = toISOyyyyMMdd(dateEl.value);
-      const dateCompact = toYYYYMMDD(dateEl.value);
+      const ymd = (dateEl.value || '').trim(); // déjà AAAA-MM-JJ
       const emails = parseEmails(emailsEl.value || '');
 
-      if (!validate(broker, dateStr, emails)) return;
+      if (!validate(broker, ymd, emails)) return;
 
-      const rows = emails.map(e => buildRow(e, broker, dateStr));
+      const rows = emails.map(e => buildRow(e, broker, ymd));
       const csv = [HEADER, ...rows].join('\n');
       outEl.value = csv;
       statEl.textContent = `${emails.length} email(s) traités (doublons supprimés).`;
 
-      currentFilename = `INIT_LEADS_PRFR_${dateCompact}000003.csv`;
+      const ymdCompact = compactYMD(ymd); // YYYYMMDD
+      currentFilename = `INIT_LEADS_PRFR_${ymdCompact}000003.csv`;
       dlBtn.textContent = `Télécharger « ${currentFilename} »`;
       copyBtn.disabled = false;
       dlBtn.disabled = false;
@@ -228,9 +218,12 @@
       hide(dateErr); hide(brokerErr); hide(emailErr);
       copyBtn.disabled = true;
       dlBtn.disabled = true;
-      dlBtn.textContent = 'Télécharger';
+      dlBtn.textContent = 'Télécharger CSV';
       currentFilename = '';
     }
+
+    // Valeur par défaut : aujourd'hui (AAAA-MM-JJ)
+    dateEl.value = todayYMD();
 
     genBtn.addEventListener('click', generate);
     document.getElementById('copy').addEventListener('click', copyOut);
