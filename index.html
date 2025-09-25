@@ -10,7 +10,8 @@
     body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; margin: 0; background: #ffffff; color: #111111; }
     .wrap { max-width: 980px; margin: 0 auto; padding: 28px var(--pad) 48px; }
     h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: 0.2px; }
-    p.sub { margin: 0 0 18px; color: #333; }
+    p.sub { margin: 0 0 10px; color: #333; }
+    code.inline { display:inline-block; padding: 2px 6px; border:1px solid #e5e7eb; border-radius: 8px; background:#f9fafb; }
     .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: var(--radius); padding: var(--pad); box-shadow: 0 6px 16px rgba(0,0,0,0.06); }
 
     label { display:block; font-weight: 600; margin: 14px 0 8px; }
@@ -35,7 +36,7 @@
     .error { font-size: 12px; color: #b91c1c; margin-top: 6px; display:none; }
 
     .outBox { margin-top: 16px; }
-    .outBox textarea { background:#f9fafb; border: 1px solid #d1d5db; border-radius: 10px; width:100%; min-height: 160px; padding:12px; box-sizing: border-box; }
+    .outBox textarea { background:#f9fafb; border: 1px solid #d1d5db; border-radius: 10px; width:100%; min-height: 200px; padding:12px; box-sizing: border-box; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 
     .stat { margin-top: 6px; font-size: 13px; color: #374151; }
     .footer { margin-top: 28px; color:#6b7280; font-size:12px; text-align:center; }
@@ -44,7 +45,8 @@
 <body>
   <div class="wrap">
     <h1>Hello Brieux!</h1>
-    <p class="sub">Format de la ligne : <code>PR|FR|&lt;Broker&gt;|||||&lt;email&gt;||||FR|CRG|&lt;Date&gt;|True||False||&lt;Date&gt;</code></p>
+    <p class="sub">Fichier CSV (séparateur <code class="inline">|</code>) avec l’en-tête :</p>
+    <p class="sub"><code class="inline">brand_code|country_code|partner_name|title|first_name|last_name|birthdate|email|zip_code|mobil_phone|fix_phone|language_code|collected_mode|creation_date|internal_consent|creation_date_internal_consent|partner_consent|creation_date_partner_consent|last_interaction_date</code></p>
 
     <div class="card">
       <div class="row">
@@ -70,15 +72,15 @@
       <div class="error" id="emailErr">Aucun e-mail valide trouvé. Exemple : <em>user@example.com</em>.</div>
 
       <div class="btns">
-        <button class="primary" id="gen">Générer les lignes</button>
+        <button class="primary" id="gen">Générer le CSV</button>
         <button id="copy" disabled>Copier</button>
-        <button id="download" disabled>Télécharger « ouptut.txt »</button>
+        <button id="download" disabled>Télécharger</button>
         <button id="clear">Effacer</button>
       </div>
 
       <div class="outBox">
-        <label for="output">Résultat</label>
-        <textarea id="output" readonly placeholder="Les lignes générées apparaîtront ici…"></textarea>
+        <label for="output">Aperçu du CSV</label>
+        <textarea id="output" readonly placeholder="L’aperçu du fichier CSV apparaîtra ici…"></textarea>
         <div class="stat" id="stat"></div>
       </div>
     </div>
@@ -87,6 +89,8 @@
   </div>
 
   <script>
+    const HEADER = 'brand_code|country_code|partner_name|title|first_name|last_name|birthdate|email|zip_code|mobil_phone|fix_phone|language_code|collected_mode|creation_date|internal_consent|creation_date_internal_consent|partner_consent|creation_date_partner_consent|last_interaction_date';
+
     const dateEl = document.getElementById('date');
     const brokerEl = document.getElementById('broker');
     const emailsEl = document.getElementById('emails');
@@ -102,8 +106,9 @@
     const dlBtn = document.getElementById('download');
     const clearBtn = document.getElementById('clear');
 
+    let currentFilename = '';
+
     function toISOyyyyMMdd(d) {
-      // Toujours renvoyer AAAA-MM-JJ
       const dt = new Date(d);
       if (isNaN(dt)) return '';
       const y = dt.getFullYear();
@@ -112,20 +117,58 @@
       return `${y}-${m}-${day}`;
     }
 
+    function toYYYYMMDD(d) {
+      const dt = new Date(d);
+      if (isNaN(dt)) return '';
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
+      const day = String(dt.getDate()).padStart(2, '0');
+      return `${y}${m}${day}`;
+    }
+
     function parseEmails(raw) {
       const parts = raw.split(/[\n,;\s]+/g).map(s => s.trim().toLowerCase()).filter(Boolean);
       const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       const seen = new Set();
       const list = [];
       for (const e of parts) {
-        if (!emailRe.test(e)) continue; // skip invalid
+        if (!emailRe.test(e)) continue;
         if (!seen.has(e)) { seen.add(e); list.push(e); }
       }
       return list;
     }
 
-    function buildLine(email, broker, dateStr) {
-      return `PR|FR|${broker}|||||${email}||||FR|CRG|${dateStr}|True||False||${dateStr}`;
+    // construit une ligne pipe-delimitée dans l'ordre de l'en-tête
+    function buildRow(email, broker, dateStr) {
+      // positions selon l'ancien format fourni par l'utilisateur
+      // 1 brand_code=PR | 2 country_code=FR | 3 partner_name=broker
+      // 4 title='' | 5 first_name='' | 6 last_name='' | 7 birthdate=''
+      // 8 email=email | 9 zip='' | 10 mobil='' | 11 fix=''
+      // 12 language_code=FR | 13 collected_mode=CRG
+      // 14 creation_date=dateStr | 15 internal_consent=True | 16 creation_date_internal_consent=''
+      // 17 partner_consent=False | 18 creation_date_partner_consent='' | 19 last_interaction_date=dateStr
+      const cells = [
+        'PR',           // brand_code
+        'FR',           // country_code
+        broker,         // partner_name
+        '',             // title
+        '',             // first_name
+        '',             // last_name
+        '',             // birthdate
+        email,          // email
+        '',             // zip_code
+        '',             // mobil_phone
+        '',             // fix_phone
+        'FR',           // language_code
+        'CRG',          // collected_mode
+        dateStr,        // creation_date
+        'True',         // internal_consent
+        '',             // creation_date_internal_consent
+        'False',        // partner_consent
+        '',             // creation_date_partner_consent
+        dateStr         // last_interaction_date
+      ];
+      return cells.join('|');
     }
 
     function show(el) { el && (el.style.display = 'block'); }
@@ -142,13 +185,18 @@
     function generate() {
       const broker = (brokerEl.value || '').trim();
       const dateStr = toISOyyyyMMdd(dateEl.value);
+      const dateCompact = toYYYYMMDD(dateEl.value);
       const emails = parseEmails(emailsEl.value || '');
 
       if (!validate(broker, dateStr, emails)) return;
 
-      const lines = emails.map(e => buildLine(e, broker, dateStr));
-      outEl.value = lines.join('\n');
+      const rows = emails.map(e => buildRow(e, broker, dateStr));
+      const csv = [HEADER, ...rows].join('\n');
+      outEl.value = csv;
       statEl.textContent = `${emails.length} email(s) traités (doublons supprimés).`;
+
+      currentFilename = `INIT_LEADS_PRFR_${dateCompact}000003.csv`;
+      dlBtn.textContent = `Télécharger « ${currentFilename} »`;
       copyBtn.disabled = false;
       dlBtn.disabled = false;
     }
@@ -163,11 +211,11 @@
 
     function downloadOut() {
       const content = outEl.value || '';
-      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const blob = new Blob([content], { type: 'text/csv;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'ouptut.txt';
+      a.download = currentFilename || 'output.csv';
       document.body.appendChild(a);
       a.click();
       URL.revokeObjectURL(url);
@@ -180,6 +228,8 @@
       hide(dateErr); hide(brokerErr); hide(emailErr);
       copyBtn.disabled = true;
       dlBtn.disabled = true;
+      dlBtn.textContent = 'Télécharger';
+      currentFilename = '';
     }
 
     genBtn.addEventListener('click', generate);
