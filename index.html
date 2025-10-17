@@ -2,9 +2,8 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>Lead Transformer (CSV → format cible)</title>
+  <title>Hello Brieux — Lead Transformer</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <!-- Tailwind via CDN (ok pour GitHub Pages) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <meta name="color-scheme" content="light dark" />
   <style>
@@ -16,7 +15,7 @@
 <body class="bg-gray-50 text-gray-900">
   <main class="max-w-3xl mx-auto p-6">
     <header class="mb-6">
-      <h1 class="text-2xl font-semibold">Lead Transformer</h1>
+      <h1 class="text-2xl font-semibold">Hello Brieux</h1>
       <p class="text-sm text-gray-600">Convertit un CSV brut (UTF-16 + tabulations) vers le format cible (séparateur <span class="mono">|</span>, UTF-8).</p>
     </header>
 
@@ -64,22 +63,17 @@
       <p id="status" class="text-sm text-gray-600 mt-3"></p>
     </section>
 
-    <section class="card bg-white p-5">
-      <h2 class="font-medium mb-2">Spécifications de sortie</h2>
-      <ul class="text-sm text-gray-700 list-disc pl-5 space-y-1">
-        <li>Séparateur <span class="mono">|</span>, encodage <span class="mono">UTF-8</span>.</li>
-        <li>Schéma colonnes : <span class="mono">brand_code|country_code|partner_name|title|first_name|last_name|birthdate|email|zip_code|mobil_phone|fix_phone|language_code|collected_mode|creation_date|internal_consent|creation_date_internal_consent|partner_consent|creation_date_partner_consent|last_interaction_date</span></li>
-        <li><span class="mono">first_name/last_name</span> : suppression des accents, casse « Prénom Nom ».</li>
-        <li><span class="mono">phone_number</span> : normalisation FR (<span class="mono">+33→0</span>, suppression non-chiffres, retrait du premier 0, conservation des 9 derniers chiffres), vers <span class="mono">mobil_phone</span>.</li>
-        <li>Dates : valeur fournie ou aujourd’hui (Europe/Paris) appliquée à <span class="mono">creation_date</span> et <span class="mono">last_interaction_date</span>.</li>
-      </ul>
-    </section>
+    <!-- Блок спецификаций УДАЛЁН по просьбе -->
+
+    <footer class="mt-10 text-xs text-gray-500 text-center">
+      Réalisé par 24tiy pour un usage interne au sein de DPR.
+    </footer>
   </main>
 
   <script>
-    // utilitaires
+    // ===== Utils
     const tzParis = 'Europe/Paris';
-    const todayParis = () => new Intl.DateTimeFormat('en-CA', { timeZone: tzParis }).format(new Date()); // YYYY-MM-DD
+    const todayParisISO = () => new Intl.DateTimeFormat('en-CA', { timeZone: tzParis }).format(new Date()); // YYYY-MM-DD
 
     function stripAccents(str) {
       return (str ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '');
@@ -102,7 +96,6 @@
     }
 
     function detectDelimiter(text) {
-      // simple: si tabulations présentes de manière dominante — on prend \t, sinon |, ;, ,
       const firstLine = text.split(/\r?\n/)[0] || '';
       const counts = {
         '\t': (firstLine.match(/\t/g) || []).length,
@@ -114,7 +107,6 @@
     }
 
     function parseCSV(text, delim) {
-      // parse très simple (pas de guillemets imbriqués) — suffisant pour tes exports
       const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.length>0);
       if (!lines.length) return { header: [], rows: [] };
       const header = lines[0].split(delim).map(h => h.trim());
@@ -147,13 +139,13 @@
       document.getElementById('status').textContent = msg;
     }
 
+    // ===== Sample file (UTF-16LE + tabs) to test UI
     document.getElementById('btnSample').addEventListener('click', () => {
       const sample = [
         ['id','created_time','ad_id','ad_name','adset_id','adset_name','campaign_id','campaign_name','form_id','form_name','is_organic','platform','prénom','nom_de_famille','email','phone_number','lead_status'],
         ['l:123','2025-10-15T19:44:39+02:00','ag:123','ad','as:1','set','c:1','cmp','f:1','form', 'False','fb','Stéphanie','Lavier','st.lavier@laposte.net','p:+33760090328','complete'],
         ['l:124','2025-10-15T19:07:32+02:00','ag:123','ad','as:1','set','c:1','cmp','f:1','form', 'False','fb','Valerie','Marty','valerie.marty8@orange.fr','p:+33685459498','complete'],
       ].map(r=>r.join('\t')).join('\n');
-      // on fournit en UTF-16LE avec BOM pour coller à l’export habituel
       const bom = new Uint8Array([0xFF,0xFE]); // UTF-16LE BOM
       const encoder = new TextEncoder('utf-16le');
       const data = new Blob([bom, encoder.encode(sample)], { type: 'text/csv' });
@@ -164,6 +156,7 @@
       setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
     });
 
+    // ===== Convert & Download
     document.getElementById('btnConvert').addEventListener('click', async () => {
       status('');
       const f = document.getElementById('fileInput').files[0];
@@ -174,24 +167,21 @@
       const country  = document.getElementById('country').value.trim()|| 'FR';
       const lang     = document.getElementById('lang').value.trim()   || 'FR';
       const collected= document.getElementById('collected').value.trim() || 'CRG';
-      const dateIn   = document.getElementById('date').value.trim() || todayParis();
+      const dateIn   = document.getElementById('date').value.trim() || todayParisISO();
 
       try {
-        // 1) lecture comme UTF-16 (cas le plus fréquent pour ton input)
-        let text = await f.text(); // la spec ne permet pas de forcer l’encodage ici
-        // si on détecte des caractères NUL (UTF-16), on reconvertit proprement
+        // Lecture avec détection UTF-16
+        let text = await f.text();
         if (/\x00/.test(text)) {
           const buf = await f.arrayBuffer();
-          // tente UTF-16LE puis BE
           text = new TextDecoder('utf-16le').decode(buf);
           if (!text.trim()) text = new TextDecoder('utf-16be').decode(buf);
         }
 
-        const delim = detectDelimiter(text); // souvent '\t'
+        const delim = detectDelimiter(text);
         const { header, rows } = parseCSV(text, delim);
         if (!rows.length) { status('Fichier vide ou non reconnu.'); return; }
 
-        // colonnes attendues côté input
         const need = ['prénom','nom_de_famille','email','phone_number'];
         const have = new Set(header.map(h=>h.toLowerCase()));
         const lowerMap = Object.fromEntries(header.map(h=>[h.toLowerCase(), h]));
@@ -238,10 +228,12 @@
         });
 
         const outCSV = toPipeCSV(outRows, outHeader);
-        const ts = new Intl.DateTimeFormat('en-CA', { timeZone: tzParis, hour12: false,
-          year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'
-        }).format(new Date()).replace(/[^0-9]/g,'');
-        const filename = `INIT_LEADS_${broker}_${ts}.csv`;
+
+        // ====== ИМЯ ФАЙЛА ПО ТВОЕМУ ШАБЛОНУ ======
+        // INIT_LEADS_PRFR_YYYYMMDD000003.csv
+        const ymd = dateIn.replace(/-/g, ''); // YYYYMMDD
+        const filename = `INIT_LEADS_PRFR_${ymd}000003.csv`;
+
         download(filename, outCSV);
         status(`OK — ${filename} généré.`);
       } catch (e) {
@@ -251,7 +243,7 @@
     });
 
     // Préremplir date « aujourd’hui »
-    document.getElementById('date').placeholder = todayParis() + ' (par défaut)';
+    document.getElementById('date').placeholder = todayParisISO() + ' (par défaut)';
   </script>
 </body>
 </html>
