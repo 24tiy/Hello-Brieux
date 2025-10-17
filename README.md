@@ -66,5 +66,3 @@ PR|FR|PAID_LEAD||ALEXANDER|FOKINYAO||[mrbeaugosse@yopmail.com](mailto:mrbeaugoss
 **Hello Brieux**  
 Développé par *24tiy* pour un usage interne au sein de **DPR**.  
 Aucune donnée n’est transmise ni stockée : tout s’exécute localement dans votre navigateur.
-```
-
