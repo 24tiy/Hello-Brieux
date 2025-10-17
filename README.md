@@ -49,24 +49,16 @@ Entrée :
 ```
 
 prénom   nom_de_famille   email                          phone_number
-EVELYNE  BERTRAND         [eveelynebertrand75@hotmail.fr](mailto:eveelynebertrand75@hotmail.fr)  p:+33663697077
+ALEXANDER  FOKINYAO         [mrbeaugosse@yopmail.com](mailto:mrbeaugosse@yopmail.com)  p:+336636666666
 
 ```
 
 Sortie :  
 ```
 
-PR|FR|PAID_LEAD||EVELYNE|BERTRAND||[eveelynebertrand75@hotmail.fr](mailto:eveelynebertrand75@hotmail.fr)||663697077||FR|CRG|2025-10-17|True||False||2025-10-17
+PR|FR|PAID_LEAD||ALEXANDER|FOKINYAO||[mrbeaugosse@yopmail.com](mailto:mrbeaugosse@yopmail.com)||663666666||FR|CRG|2025-10-17|True||False||2025-10-17
 
 ```
-
----
-
-## 🪩 Design
-
-Inspiré de l’esthétique [air.inc](https://air.inc) :  
-interface claire, fluide et sans surcharge, pensée pour un usage interne.
-
 ---
 
 ## 🧑‍💻 Crédits
