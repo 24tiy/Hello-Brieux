@@ -11,7 +11,6 @@
       --radius: 16px;
       --ring: 0 0 0 1px rgba(17, 24, 39, .06);
     }
-    /* Air-like background */
     body{
       background:
         radial-gradient(1200px 800px at 70% -10%, rgba(56,189,248,.18), transparent 60%),
@@ -64,7 +63,6 @@
 </head>
 <body class="text-slate-900 antialiased">
   <main class="max-w-4xl mx-auto px-6 py-10">
-    <!-- Hero -->
     <header class="mb-8">
       <h1 class="text-3xl md:text-4xl font-semibold tracking-tight">Hello Brieux</h1>
       <p class="text-slate-600 mt-3 max-w-2xl">
@@ -73,7 +71,6 @@
       </p>
     </header>
 
-    <!-- Card -->
     <section class="container-card p-6 md:p-7 mb-6">
       <div class="grid md:grid-cols-2 gap-6">
         <div>
@@ -135,7 +132,39 @@
     const todayParisISO = () =>
       new Intl.DateTimeFormat('en-CA', { timeZone: tzParis }).format(new Date()); // YYYY-MM-DD
 
-    // Prendre prénom/nom tels quels (trim seulement)
+    // Normalise diverse date inputs to strict YYYYMMDD (pads with zeros). Fallback = today.
+    function toYMD(dateStr){
+      const s = String(dateStr || '').trim();
+      // 1) Prefer explicit YYYY-MM-DD (allow single-digit month/day)
+      let m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+      if (m){
+        const y = m[1];
+        const mo = String(m[2]).padStart(2,'0');
+        const d = String(m[3]).padStart(2,'0');
+        return `${y}${mo}${d}`;
+      }
+      // 2) Try DD/MM/YYYY or DD-MM-YYYY
+      m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+      if (m){
+        const d = String(m[1]).padStart(2,'0');
+        const mo = String(m[2]).padStart(2,'0');
+        const y = m[3];
+        return `${y}${mo}${d}`;
+      }
+      // 3) Try Date() parse (last resort, timezone Paris)
+      const dt = new Date(s);
+      if (!isNaN(dt.getTime())){
+        const y = dt.getFullYear();
+        const mo = String(dt.getMonth()+1).padStart(2,'0');
+        const d = String(dt.getDate()).padStart(2,'0');
+        return `${y}${mo}${d}`;
+      }
+      // 4) Fallback: today in Paris
+      const today = todayParisISO(); // YYYY-MM-DD
+      return today.replace(/-/g,'');
+    }
+
+    // Names as-is (just trim)
     function passName(str){ return String(str ?? '').trim(); }
 
     function parseFRPhone(v){
@@ -191,7 +220,7 @@
 
     function status(msg){ document.getElementById('status').textContent = msg; }
 
-    // Exemple CSV (UTF-16LE + tabs) pour test visuel
+    // Sample CSV (UTF-16LE + tabs) for quick test
     document.getElementById('btnSample').addEventListener('click', () => {
       const sample = [
         ['id','created_time','ad_id','ad_name','adset_id','adset_name','campaign_id','campaign_name','form_id','form_name','is_organic','platform','prénom','nom_de_famille','email','phone_number','lead_status'],
@@ -220,10 +249,11 @@
       const country   = document.getElementById('country').value.trim()  || 'FR';
       const lang      = document.getElementById('lang').value.trim()     || 'FR';
       const collected = document.getElementById('collected').value.trim()|| 'CRG';
-      const dateIn    = document.getElementById('date').value.trim()     || todayParisISO();
+      const dateRaw   = document.getElementById('date').value.trim()     || todayParisISO();
+      const ymd       = toYMD(dateRaw); // <-- robust YYYYMMDD
 
       try{
-        // Lecture (gestion UTF-16)
+        // Read file (UTF-16 aware)
         let text = await f.text();
         if (/\x00/.test(text)){
           const buf = await f.arrayBuffer();
@@ -252,12 +282,11 @@
         ];
 
         const outRows = rows.map(r => {
-          const first = passName(r[ lowerMap['prénom'] ]);
-          const last  = passName(r[ lowerMap['nom_de_famille'] ]);
+          const first = String(r[ lowerMap['prénom'] ] ?? '').trim();
+          const last  = String(r[ lowerMap['nom_de_famille'] ] ?? '').trim();
           const email = (r[ lowerMap['email'] ] ?? '').trim();
           const phone = parseFRPhone(r[ lowerMap['phone_number'] ]);
 
-          // FR rule: 6/7 → mobile, otherwise fix
           let mobil = '', fix = '';
           if (phone){
             if (phone.startsWith('6') || phone.startsWith('7')) mobil = phone;
@@ -278,19 +307,18 @@
             fix_phone: fix,
             language_code: lang,
             collected_mode: collected,
-            creation_date: dateIn,
+            creation_date: `${ymd.slice(0,4)}-${ymd.slice(4,6)}-${ymd.slice(6,8)}`, // keep ISO in data
             internal_consent: 'True',
             creation_date_internal_consent: '',
             partner_consent: 'False',
             creation_date_partner_consent: '',
-            last_interaction_date: dateIn
+            last_interaction_date: `${ymd.slice(0,4)}-${ymd.slice(4,6)}-${ymd.slice(6,8)}`
           };
         });
 
         const outCSV = toPipeCSV(outRows, outHeader);
 
-        // Nom de fichier strict : INIT_LEADS_PRFR_YYYYMMDD000003.csv
-        const ymd = dateIn.replace(/-/g, '');
+        // STRICT filename
         const filename = `INIT_LEADS_PRFR_${ymd}000003.csv`;
 
         download(filename, outCSV);
@@ -301,7 +329,7 @@
       }
     });
 
-    // Placeholder = date du jour
+    // Placeholder = today
     document.getElementById('date').placeholder = todayParisISO() + ' (par défaut)';
   </script>
 </body>
