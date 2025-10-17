@@ -1,251 +1,257 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Hello Brieux!</title>
+  <meta charset="utf-8">
+  <title>Lead Transformer (CSV → format cible)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- Tailwind via CDN (ok pour GitHub Pages) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="color-scheme" content="light dark" />
   <style>
-    :root { --pad: 14px; --radius: 14px; }
-    html, body { height: 100%; }
-    body {
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      margin: 0; background: #ffffff; color: #111111;
-    }
-    .wrap { max-width: 980px; margin: 0 auto; padding: 28px var(--pad) 48px; }
-    h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: 0.2px; }
-    p.sub { margin: 0 0 10px; color: #333; }
-    .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: var(--radius); padding: var(--pad); box-shadow: 0 6px 16px rgba(0,0,0,0.06); }
-
-    label { display:block; font-weight: 600; margin: 14px 0 8px; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    @media (max-width: 720px) { .row { grid-template-columns: 1fr; } }
-
-    /* unified control sizes */
-    .control { width: 100%; }
-    .control input, .control textarea, .control select {
-      width: 100%; padding: 12px 12px; background: #ffffff; color: #111111; border: 1px solid #d1d5db; border-radius: 10px; outline: none;
-      height: 44px; box-sizing: border-box;
-    }
-    .control textarea { min-height: 160px; resize: vertical; height: auto; }
-
-    .btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
-    button { appearance: none; border: 1px solid #d1d5db; background: #0b1223; color: #fff; padding: 10px 14px; border-radius: 10px; cursor: pointer; font-weight: 700; height: 40px; }
-    button.secondary { background: #f9fafb; color:#111; font-weight:600; }
-    button:disabled { opacity: .5; cursor: not-allowed; }
-
-    .hint { font-size: 12px; color: #6b7280; margin-top: 6px; }
-    .error { font-size: 12px; color: #b91c1c; margin-top: 6px; display:none; }
-
-    .outBox { margin-top: 16px; }
-    .outBox textarea {
-      background:#f9fafb; border: 1px solid #d1d5db; border-radius: 10px;
-      width:100%; min-height: 200px; padding:12px; box-sizing: border-box;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    }
-
-    .stat { margin-top: 6px; font-size: 13px; color: #374151; }
-    .footer { margin-top: 28px; color:#6b7280; font-size:12px; text-align:center; }
+    :root { --radius: 16px; }
+    .card { border-radius: var(--radius); box-shadow: 0 8px 24px rgba(0,0,0,.06); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
   </style>
 </head>
-<body>
-  <div class="wrap">
-    <h1>Hello Brieux!</h1>
-    <p class="sub">Le fichier téléchargé sera un <strong>CSV</strong> (séparateur <code>|</code>). L’aperçu s’affiche ci-dessous.</p>
+<body class="bg-gray-50 text-gray-900">
+  <main class="max-w-3xl mx-auto p-6">
+    <header class="mb-6">
+      <h1 class="text-2xl font-semibold">Lead Transformer</h1>
+      <p class="text-sm text-gray-600">Convertit un CSV brut (UTF-16 + tabulations) vers le format cible (séparateur <span class="mono">|</span>, UTF-8).</p>
+    </header>
 
-    <div class="card">
-      <div class="row">
-        <div class="field">
-          <label for="date">Date (AAAA-MM-JJ)</label>
-          <div class="control">
-            <input id="date" type="text" inputmode="numeric" placeholder="aaaa-mm-jj" pattern="\d{4}-\d{2}-\d{2}" />
+    <section class="card bg-white p-5 mb-6">
+      <div class="grid md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Fichier d’entrée (CSV)</label>
+          <input id="fileInput" type="file" accept=".csv,text/csv" class="w-full rounded-lg border px-3 py-2">
+          <p class="text-xs text-gray-500 mt-1">Ex.: export formulaire FB/IG — souvent encodé en UTF-16 avec tabulations.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Broker (<span class="mono">partner_name</span>)</label>
+          <input id="broker" type="text" class="w-full rounded-lg border px-3 py-2" placeholder="PAID_LEAD" value="PAID_LEAD">
+          <p class="text-xs text-gray-500 mt-1">Sera appliqué à toutes les lignes.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Date (YYYY-MM-DD)</label>
+          <input id="date" type="text" class="w-full rounded-lg border px-3 py-2" placeholder="auto: aujourd’hui (Europe/Paris)">
+          <p class="text-xs text-gray-500 mt-1">Laisse vide pour « aujourd’hui » (Europe/Paris). Sert pour <span class="mono">creation_date</span> et <span class="mono">last_interaction_date</span>.</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium mb-1">brand_code</label>
+            <input id="brand" type="text" class="w-full rounded-lg border px-3 py-2" value="PR">
           </div>
-          <div class="hint">Toujours au format <strong>AAAA-MM-JJ</strong> (ex. 2025-09-23). Utilisée pour les dates des lignes et le nom du fichier.</div>
-          <div class="error" id="dateErr">Date invalide. Format attendu : AAAA-MM-JJ.</div>
+          <div>
+            <label class="block text-sm font-medium mb-1">country_code</label>
+            <input id="country" type="text" class="w-full rounded-lg border px-3 py-2" value="FR">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">language_code</label>
+            <input id="lang" type="text" class="w-full rounded-lg border px-3 py-2" value="FR">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">collected_mode</label>
+            <input id="collected" type="text" class="w-full rounded-lg border px-3 py-2" value="CRG">
+          </div>
         </div>
-        <div class="field">
-          <label for="broker">Broker</label>
-          <div class="control"><input id="broker" type="text" placeholder="Saisissez le broker (ex. AFOTEST)" /></div>
-          <div class="hint">Aucune valeur par défaut. Ce champ est requis.</div>
-          <div class="error" id="brokerErr">broker est vide</div>
-        </div>
       </div>
 
-      <label for="emails">Emails (un par ligne, ou séparés par virgule/point-virgule/espace)</label>
-      <div class="control">
-        <textarea id="emails" placeholder="ivan@yopmail.com
-petra@example.org, user@test.com
-…"></textarea>
+      <div class="mt-5 flex gap-3">
+        <button id="btnConvert" class="px-4 py-2 rounded-xl bg-gray-900 text-white hover:bg-black">Convertir & Télécharger</button>
+        <button id="btnSample" class="px-4 py-2 rounded-xl border">Télécharger un CSV exemple</button>
       </div>
-      <div class="hint">Les doublons sont automatiquement supprimés. Les espaces superflus sont nettoyés.</div>
-      <div class="error" id="emailErr">Aucun e-mail valide trouvé. Exemple : <em>user@example.com</em>.</div>
+      <p id="status" class="text-sm text-gray-600 mt-3"></p>
+    </section>
 
-      <div class="btns">
-        <button id="gen">Générer le CSV</button>
-        <button class="secondary" id="copy" disabled>Copier</button>
-        <button class="secondary" id="download" disabled>Télécharger CSV</button>
-        <button class="secondary" id="clear">Effacer</button>
-      </div>
-
-      <div class="outBox">
-        <label for="output">Aperçu du CSV</label>
-        <textarea id="output" readonly placeholder="L’aperçu du fichier CSV apparaîtra ici…"></textarea>
-        <div class="stat" id="stat"></div>
-      </div>
-    </div>
-
-    <div class="footer">Fabriqué avec ❤️ par 24tiy pour automatiser la création de lignes d'export.</div>
-  </div>
+    <section class="card bg-white p-5">
+      <h2 class="font-medium mb-2">Spécifications de sortie</h2>
+      <ul class="text-sm text-gray-700 list-disc pl-5 space-y-1">
+        <li>Séparateur <span class="mono">|</span>, encodage <span class="mono">UTF-8</span>.</li>
+        <li>Schéma colonnes : <span class="mono">brand_code|country_code|partner_name|title|first_name|last_name|birthdate|email|zip_code|mobil_phone|fix_phone|language_code|collected_mode|creation_date|internal_consent|creation_date_internal_consent|partner_consent|creation_date_partner_consent|last_interaction_date</span></li>
+        <li><span class="mono">first_name/last_name</span> : suppression des accents, casse « Prénom Nom ».</li>
+        <li><span class="mono">phone_number</span> : normalisation FR (<span class="mono">+33→0</span>, suppression non-chiffres, retrait du premier 0, conservation des 9 derniers chiffres), vers <span class="mono">mobil_phone</span>.</li>
+        <li>Dates : valeur fournie ou aujourd’hui (Europe/Paris) appliquée à <span class="mono">creation_date</span> et <span class="mono">last_interaction_date</span>.</li>
+      </ul>
+    </section>
+  </main>
 
   <script>
-    // En-tête exigé
-    const HEADER = 'brand_code|country_code|partner_name|title|first_name|last_name|birthdate|email|zip_code|mobil_phone|fix_phone|language_code|collected_mode|creation_date|internal_consent|creation_date_internal_consent|partner_consent|creation_date_partner_consent|last_interaction_date';
+    // utilitaires
+    const tzParis = 'Europe/Paris';
+    const todayParis = () => new Intl.DateTimeFormat('en-CA', { timeZone: tzParis }).format(new Date()); // YYYY-MM-DD
 
-    const dateEl   = document.getElementById('date');
-    const brokerEl = document.getElementById('broker');
-    const emailsEl = document.getElementById('emails');
-    const outEl    = document.getElementById('output');
-    const statEl   = document.getElementById('stat');
-
-    const dateErr   = document.getElementById('dateErr');
-    const brokerErr = document.getElementById('brokerErr');
-    const emailErr  = document.getElementById('emailErr');
-
-    const genBtn = document.getElementById('gen');
-    const copyBtn = document.getElementById('copy');
-    const dlBtn = document.getElementById('download');
-    const clearBtn = document.getElementById('clear');
-
-    let currentFilename = '';
-
-    // Helpers
-    function todayYMD() {
-      const d = new Date();
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${y}-${m}-${day}`; // AAAA-MM-JJ
+    function stripAccents(str) {
+      return (str ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '');
     }
-    function compactYMD(ymd) { return (ymd || '').replace(/-/g, ''); }
-    function isValidYMD(ymd) {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return false;
-      const [y, m, d] = ymd.split('-').map(Number);
-      const dt = new Date(y, m - 1, d);
-      return dt.getFullYear() === y && (dt.getMonth() + 1) === m && dt.getDate() === d;
+    function titleCase(str) {
+      return (str ?? '').toLowerCase().replace(/\b[\p{L}\p{N}][\p{L}\p{N}'-]*/gu, s => s.charAt(0).toUpperCase() + s.slice(1));
     }
-    function parseEmails(raw) {
-      const parts = raw.split(/[\n,;\s]+/g).map(s => s.trim().toLowerCase()).filter(Boolean);
-      const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      const seen = new Set();
-      const list = [];
-      for (const e of parts) {
-        if (!emailRe.test(e)) continue;
-        if (!seen.has(e)) { seen.add(e); list.push(e); }
-      }
-      return list;
+    function normalizeName(str) {
+      return titleCase(stripAccents(String(str).trim()));
     }
-    // construit une ligne dans l'ordre de l'en-tête
-    function buildRow(email, broker, dateStr) {
-      const cells = [
-        'PR',   // brand_code
-        'FR',   // country_code
-        broker, // partner_name
-        '',     // title
-        '',     // first_name
-        '',     // last_name
-        '',     // birthdate
-        email,  // email
-        '',     // zip_code
-        '',     // mobil_phone
-        '',     // fix_phone
-        'FR',   // language_code
-        'CRG',  // collected_mode
-        dateStr,// creation_date
-        'True', // internal_consent
-        '',     // creation_date_internal_consent
-        'False',// partner_consent
-        '',     // creation_date_partner_consent
-        dateStr // last_interaction_date
-      ];
-      return cells.join('|');
-    }
-    function show(el) { if (el) el.style.display = 'block'; }
-    function hide(el) { if (el) el.style.display = 'none'; }
-
-    function validate(broker, ymd, emails) {
-      let ok = true;
-      if (!broker) { show(brokerErr); ok = false; } else { hide(brokerErr); }
-      if (!isValidYMD(ymd)) { show(dateErr); ok = false; } else { hide(dateErr); }
-      if (emails.length === 0) { show(emailErr); ok = false; } else { hide(emailErr); }
-      return ok;
+    function parseFRPhone(v) {
+      if (v == null) return '';
+      let s = String(v);
+      s = s.replace(/[^0-9+]/g, '');
+      if (s.startsWith('+33')) s = '0' + s.slice(3);
+      s = s.replace(/\D/g, '');
+      if (s.startsWith('0')) s = s.slice(1);
+      if (s.length >= 9) s = s.slice(-9);
+      return s;
     }
 
-    function generate() {
-      const broker = (brokerEl.value || '').trim();
-      const ymd = (dateEl.value || '').trim();
-      const emails = parseEmails(emailsEl.value || '');
-
-      if (!validate(broker, ymd, emails)) return;
-
-      const rows = emails.map(e => buildRow(e, broker, ymd));
-      const csv = [HEADER, ...rows].join('\r\n'); // CRLF pour Excel
-      outEl.value = csv;
-      statEl.textContent = `${emails.length} email(s) traités (doublons supprimés).`;
-
-      const ymdCompact = compactYMD(ymd); // YYYYMMDD
-      currentFilename = `INIT_LEADS_PRFR_${ymdCompact}000003.csv`;
-      dlBtn.textContent = `Télécharger « ${currentFilename} »`;
-      copyBtn.disabled = false;
-      dlBtn.disabled = false;
+    function detectDelimiter(text) {
+      // simple: si tabulations présentes de manière dominante — on prend \t, sinon |, ;, ,
+      const firstLine = text.split(/\r?\n/)[0] || '';
+      const counts = {
+        '\t': (firstLine.match(/\t/g) || []).length,
+        '|':  (firstLine.match(/\|/g) || []).length,
+        ';':  (firstLine.match(/;/g) || []).length,
+        ',':  (firstLine.match(/,/g) || []).length
+      };
+      return Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0] || '\t';
     }
 
-    async function copyOut() {
-      if (!outEl.value) return;
-      try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(outEl.value);
-        } else {
-          outEl.select();
-          document.execCommand('copy');
-        }
-        const old = this.textContent; this.textContent = 'Copié!';
-        setTimeout(() => (this.textContent = old), 1200);
-      } catch (_) {}
+    function parseCSV(text, delim) {
+      // parse très simple (pas de guillemets imbriqués) — suffisant pour tes exports
+      const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.length>0);
+      if (!lines.length) return { header: [], rows: [] };
+      const header = lines[0].split(delim).map(h => h.trim());
+      const rows = lines.slice(1).map(line => {
+        const cols = line.split(delim);
+        const obj = {};
+        header.forEach((h,i)=> obj[h] = (cols[i] ?? '').trim());
+        return obj;
+      });
+      return { header, rows };
     }
 
-    function downloadOut() {
-      const content = outEl.value || '';
-      // Жёстко задаём имя и тип, чтобы браузер не переименовывал (включая Safari)
-      const file = new File([content], currentFilename || 'output.csv', { type: 'text/csv;charset=utf-8' });
-      const url = URL.createObjectURL(file);
+    function toPipeCSV(rows, header) {
+      const esc = v => (v == null ? '' : String(v)).replace(/\r?\n/g, ' ').replace(/\|/g, '\\|');
+      const head = header.join('|');
+      const body = rows.map(r => header.map(h => esc(r[h])).join('|')).join('\n');
+      return head + '\n' + body + '\n';
+    }
+
+    function download(filename, text) {
+      const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.setAttribute('download', file.name);
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      URL.revokeObjectURL(url);
-      a.remove();
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
     }
 
-    function clearAll() {
-      outEl.value = '';
-      statEl.textContent = '';
-      hide(dateErr); hide(brokerErr); hide(emailErr);
-      copyBtn.disabled = true;
-      dlBtn.disabled = true;
-      dlBtn.textContent = 'Télécharger CSV';
-      currentFilename = '';
+    function status(msg) {
+      document.getElementById('status').textContent = msg;
     }
 
-    // Valeur par défaut : aujourd'hui (AAAA-MM-JJ)
-    document.addEventListener('DOMContentLoaded', () => {
-      dateEl.value = todayYMD();
+    document.getElementById('btnSample').addEventListener('click', () => {
+      const sample = [
+        ['id','created_time','ad_id','ad_name','adset_id','adset_name','campaign_id','campaign_name','form_id','form_name','is_organic','platform','prénom','nom_de_famille','email','phone_number','lead_status'],
+        ['l:123','2025-10-15T19:44:39+02:00','ag:123','ad','as:1','set','c:1','cmp','f:1','form', 'False','fb','Stéphanie','Lavier','st.lavier@laposte.net','p:+33760090328','complete'],
+        ['l:124','2025-10-15T19:07:32+02:00','ag:123','ad','as:1','set','c:1','cmp','f:1','form', 'False','fb','Valerie','Marty','valerie.marty8@orange.fr','p:+33685459498','complete'],
+      ].map(r=>r.join('\t')).join('\n');
+      // on fournit en UTF-16LE avec BOM pour coller à l’export habituel
+      const bom = new Uint8Array([0xFF,0xFE]); // UTF-16LE BOM
+      const encoder = new TextEncoder('utf-16le');
+      const data = new Blob([bom, encoder.encode(sample)], { type: 'text/csv' });
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'input_exemple_utf16_tab.csv';
+      document.body.appendChild(a); a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
     });
 
-    genBtn.addEventListener('click', generate);
-    copyBtn.addEventListener('click', copyOut);
-    dlBtn.addEventListener('click', downloadOut);
-    clearBtn.addEventListener('click', clearAll);
+    document.getElementById('btnConvert').addEventListener('click', async () => {
+      status('');
+      const f = document.getElementById('fileInput').files[0];
+      if (!f) { status('Choisis un fichier CSV.'); return; }
+
+      const broker   = document.getElementById('broker').value.trim() || 'PAID_LEAD';
+      const brand    = document.getElementById('brand').value.trim()  || 'PR';
+      const country  = document.getElementById('country').value.trim()|| 'FR';
+      const lang     = document.getElementById('lang').value.trim()   || 'FR';
+      const collected= document.getElementById('collected').value.trim() || 'CRG';
+      const dateIn   = document.getElementById('date').value.trim() || todayParis();
+
+      try {
+        // 1) lecture comme UTF-16 (cas le plus fréquent pour ton input)
+        let text = await f.text(); // la spec ne permet pas de forcer l’encodage ici
+        // si on détecte des caractères NUL (UTF-16), on reconvertit proprement
+        if (/\x00/.test(text)) {
+          const buf = await f.arrayBuffer();
+          // tente UTF-16LE puis BE
+          text = new TextDecoder('utf-16le').decode(buf);
+          if (!text.trim()) text = new TextDecoder('utf-16be').decode(buf);
+        }
+
+        const delim = detectDelimiter(text); // souvent '\t'
+        const { header, rows } = parseCSV(text, delim);
+        if (!rows.length) { status('Fichier vide ou non reconnu.'); return; }
+
+        // colonnes attendues côté input
+        const need = ['prénom','nom_de_famille','email','phone_number'];
+        const have = new Set(header.map(h=>h.toLowerCase()));
+        const lowerMap = Object.fromEntries(header.map(h=>[h.toLowerCase(), h]));
+        const missing = need.filter(c => !have.has(c));
+        if (missing.length) {
+          status('Colonnes manquantes dans le fichier : ' + missing.join(', ') + '.');
+          return;
+        }
+
+        const outHeader = [
+          'brand_code','country_code','partner_name','title','first_name','last_name','birthdate','email',
+          'zip_code','mobil_phone','fix_phone','language_code','collected_mode','creation_date',
+          'internal_consent','creation_date_internal_consent','partner_consent','creation_date_partner_consent',
+          'last_interaction_date'
+        ];
+
+        const outRows = rows.map(r => {
+          const first = normalizeName(r[ lowerMap['prénom'] ]);
+          const last  = normalizeName(r[ lowerMap['nom_de_famille'] ]);
+          const email = (r[ lowerMap['email'] ] ?? '').trim();
+          const phone = parseFRPhone(r[ lowerMap['phone_number'] ]);
+
+          return {
+            brand_code: brand,
+            country_code: country,
+            partner_name: broker,
+            title: '',
+            first_name: first,
+            last_name: last,
+            birthdate: '',
+            email: email,
+            zip_code: '',
+            mobil_phone: phone,
+            fix_phone: '',
+            language_code: lang,
+            collected_mode: collected,
+            creation_date: dateIn,
+            internal_consent: 'True',
+            creation_date_internal_consent: '',
+            partner_consent: 'False',
+            creation_date_partner_consent: '',
+            last_interaction_date: dateIn
+          };
+        });
+
+        const outCSV = toPipeCSV(outRows, outHeader);
+        const ts = new Intl.DateTimeFormat('en-CA', { timeZone: tzParis, hour12: false,
+          year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'
+        }).format(new Date()).replace(/[^0-9]/g,'');
+        const filename = `INIT_LEADS_${broker}_${ts}.csv`;
+        download(filename, outCSV);
+        status(`OK — ${filename} généré.`);
+      } catch (e) {
+        console.error(e);
+        status('Erreur: ' + (e.message || e));
+      }
+    });
+
+    // Préremplir date « aujourd’hui »
+    document.getElementById('date').placeholder = todayParis() + ' (par défaut)';
   </script>
 </body>
 </html>
