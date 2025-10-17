@@ -11,7 +11,7 @@
       --radius: 16px;
       --ring: 0 0 0 1px rgba(17, 24, 39, .06);
     }
-    /* Air-like background: clean, bright, subtle grid + gradient glow */
+    /* Air-like background */
     body{
       background:
         radial-gradient(1200px 800px at 70% -10%, rgba(56,189,248,.18), transparent 60%),
@@ -59,30 +59,17 @@
       border: 1px solid #e5e7eb;
       color: #111827;
     }
-    .badge{
-      display: inline-flex; align-items: center; gap:.5rem;
-      font-size: .78rem; font-weight: 600;
-      padding:.42rem .6rem; border-radius:999px;
-      color:#0f172a; background:#eef2ff; border:1px solid #e5e7eb;
-    }
     .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
-    .hairline{ box-shadow: var(--ring); }
   </style>
 </head>
 <body class="text-slate-900 antialiased">
   <main class="max-w-4xl mx-auto px-6 py-10">
     <!-- Hero -->
     <header class="mb-8">
-      <div class="mb-3">
-        <span class="badge">Hello Brieux</span>
-      </div>
-      <h1 class="text-3xl md:text-4xl font-semibold tracking-tight">
-        Transformez vos leads bruts en CSV prêt à l’emploi
-      </h1>
+      <h1 class="text-3xl md:text-4xl font-semibold tracking-tight">Hello Brieux</h1>
       <p class="text-slate-600 mt-3 max-w-2xl">
         Déposez l’export (souvent <span class="mono">UTF-16 + tabs</span>), choisissez le
-        <span class="mono">broker</span> et la date : on vous rend un fichier normalisé (séparateur <span class="mono">|</span>, <span class="mono">UTF-8</span>)
-        conforme au format interne.
+        <span class="mono">broker</span> et la date — recevez un CSV normalisé (séparateur <span class="mono">|</span>, <span class="mono">UTF-8</span>).
       </p>
     </header>
 
@@ -92,7 +79,7 @@
         <div>
           <label class="block text-sm font-medium mb-1">Fichier d’entrée (CSV)</label>
           <input id="fileInput" type="file" accept=".csv,text/csv" class="field">
-          <p class="text-slate-500 text-xs mt-1">Export formulaire (Facebook/Instagram), souvent encodé en UTF-16 avec tabulations.</p>
+          <p class="text-slate-500 text-xs mt-1">Export formulaire (souvent UTF-16 + tabulations).</p>
         </div>
 
         <div>
@@ -135,19 +122,6 @@
       </div>
 
       <p id="status" class="text-slate-600 text-sm mt-4"></p>
-    </section>
-
-    <!-- Tiny helper card -->
-    <section class="grid md:grid-cols-3 gap-4 mb-10">
-      <div class="bg-white rounded-xl p-4 hairline">
-        <p class="text-sm text-slate-700"><span class="font-semibold">Nom du fichier</span> : <span class="mono">INIT_LEADS_PRFR_YYYYMMDD000003.csv</span></p>
-      </div>
-      <div class="bg-white rounded-xl p-4 hairline">
-        <p class="text-sm text-slate-700">Téléphone FR : <span class="mono">+33→0</span>, puis 9 derniers chiffres. <span class="mono">6/7 → mobil</span> sinon <span class="mono">fix</span>.</p>
-      </div>
-      <div class="bg-white rounded-xl p-4 hairline">
-        <p class="text-sm text-slate-700">Les noms/prénoms sont pris <em>tels quels</em> (sans modification).</p>
-      </div>
     </section>
 
     <footer class="text-xs text-slate-500 text-center py-6">
@@ -249,7 +223,7 @@
       const dateIn    = document.getElementById('date').value.trim()     || todayParisISO();
 
       try{
-        // Lecture avec gestion UTF-16
+        // Lecture (gestion UTF-16)
         let text = await f.text();
         if (/\x00/.test(text)){
           const buf = await f.arrayBuffer();
@@ -327,7 +301,7 @@
       }
     });
 
-    // Placeholder avec la date du jour
+    // Placeholder = date du jour
     document.getElementById('date').placeholder = todayParisISO() + ' (par défaut)';
   </script>
 </body>
