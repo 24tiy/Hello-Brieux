@@ -4,130 +4,523 @@
   <meta charset="utf-8" />
   <title>Hello Brieux — Lead Transformer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="light" />
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta name="description" content="Convertit un export de leads au format INIT_LEADS de DPR, directement dans le navigateur." />
+  <meta name="color-scheme" content="light dark" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23161a22'/%3E%3Cpath d='M9 16h12.5M17 11l5 5-5 5' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
   <style>
     :root{
-      --radius: 16px;
-      --ring: 0 0 0 1px rgba(17, 24, 39, .06);
+      --bg:#f4f5f7;
+      --surface:#ffffff;
+      --surface-2:#f8f9fb;
+      --text:#141820;
+      --muted:#5c6575;
+      --faint:#8a92a0;
+      --border:#e4e7ec;
+      --border-strong:#d3d8df;
+      --accent:#3b5bfd;
+      --accent-soft:rgba(59,91,253,.07);
+      --ring:rgba(59,91,253,.24);
+      --ink:#161a22;
+      --ink-hover:#262c38;
+      --ink-text:#ffffff;
+      --ok:#0d7a54;
+      --ok-soft:#e9f6ef;
+      --warn:#9a5300;
+      --warn-soft:#fff4e2;
+      --err:#c0292b;
+      --err-soft:#fdeeee;
+      --radius:16px;
+      --radius-sm:11px;
+      --shadow:0 1px 2px rgba(16,24,40,.04), 0 6px 20px rgba(16,24,40,.05);
+      --font:ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --mono:ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      color-scheme:light;
     }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg:#0c0e12;
+        --surface:#14171d;
+        --surface-2:#191d24;
+        --text:#e9ecf1;
+        --muted:#a0a8b5;
+        --faint:#717a88;
+        --border:#252a33;
+        --border-strong:#323844;
+        --accent:#8197ff;
+        --accent-soft:rgba(129,151,255,.09);
+        --ring:rgba(129,151,255,.3);
+        --ink:#eef0f4;
+        --ink-hover:#ffffff;
+        --ink-text:#11141a;
+        --ok:#4cc590;
+        --ok-soft:rgba(76,197,144,.1);
+        --warn:#f0b35c;
+        --warn-soft:rgba(240,179,92,.1);
+        --err:#ff7b7b;
+        --err-soft:rgba(255,123,123,.1);
+        --shadow:0 1px 2px rgba(0,0,0,.3);
+        color-scheme:dark;
+      }
+    }
+
+    *,*::before,*::after{ box-sizing:border-box; }
+    html{ -webkit-text-size-adjust:100%; }
     body{
-      background:
-        radial-gradient(1200px 800px at 70% -10%, rgba(56,189,248,.18), transparent 60%),
-        radial-gradient(900px 600px at -10% 20%, rgba(99,102,241,.15), transparent 55%),
-        #fafafa;
+      margin:0;
+      min-height:100vh;
+      background:var(--bg);
+      color:var(--text);
+      font:15px/1.55 var(--font);
+      -webkit-font-smoothing:antialiased;
+      text-rendering:optimizeLegibility;
     }
-    .container-card{
-      background: #fff;
-      border-radius: var(--radius);
-      box-shadow:
-        0 10px 30px rgba(17,24,39,.06),
-        var(--ring);
+    h1,h2,h3{ text-wrap:balance; }
+    p,li,.hint,.notice{ text-wrap:pretty; }
+    [hidden]{ display:none !important; }
+    code,.mono{ font-family:var(--mono); font-size:.9em; }
+    .sr-only{
+      position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+      overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
     }
+    :focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+    /* ===== Layout */
+    .wrap{ max-width:760px; margin:0 auto; padding:48px 16px 32px; }
+
+    .top{ margin-bottom:28px; }
+    .brand{ display:flex; align-items:center; gap:14px; }
+    .logo{ flex:none; width:40px; height:40px; border-radius:12px; background:var(--ink); color:var(--ink-text); display:grid; place-items:center; }
+    .brand h1{ margin:0; font-size:28px; line-height:1.1; font-weight:650; letter-spacing:-.025em; }
+    .brand-sub{ margin:3px 0 0; font-size:13.5px; color:var(--faint); letter-spacing:.01em; }
+    .lede{ margin:18px 0 0; max-width:52ch; color:var(--muted); font-size:15.5px; text-wrap:balance; }
+    .lede code{ color:var(--text); }
+    .trust{
+      display:inline-flex; align-items:center; gap:7px; margin-top:14px;
+      padding:5px 11px 5px 9px; border-radius:999px;
+      background:var(--ok-soft); color:var(--ok); font-size:13px; font-weight:500;
+    }
+
+    .card{
+      background:var(--surface);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:20px;
+      margin-bottom:14px;
+    }
+    @media (min-width:640px){ .card{ padding:26px 28px; } }
+
+    .step-head{ display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+    .step-head h2{ margin:0; font-size:16px; font-weight:620; letter-spacing:-.01em; }
+    .step-n{
+      flex:none; width:26px; height:26px; border-radius:50%;
+      display:grid; place-items:center;
+      font-size:12.5px; font-weight:650; font-variant-numeric:tabular-nums;
+      background:var(--surface-2); border:1px solid var(--border-strong); color:var(--muted);
+      transition:background .2s, border-color .2s, color .2s;
+    }
+    .step-n svg{ display:none; }
+    .step-n.done{ background:var(--ok); border-color:var(--ok); color:#fff; }
+    .step-n.done span{ display:none; }
+    .step-n.done svg{ display:block; }
+
+    /* ===== Step 1: drop zone */
+    .drop-zone{
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:4px; padding:34px 20px; text-align:center;
+      border:1.5px dashed var(--border-strong); border-radius:14px;
+      background:var(--surface-2); cursor:pointer;
+      transition:border-color .15s, background .15s;
+    }
+    .drop-zone:hover{ border-color:var(--accent); }
+    #fileInput:focus-visible + .drop-zone{ outline:2px solid var(--accent); outline-offset:2px; }
+    .drop-icon{
+      width:44px; height:44px; margin-bottom:10px; border-radius:12px;
+      display:grid; place-items:center;
+      background:var(--surface); border:1px solid var(--border); color:var(--accent);
+      transition:transform .2s;
+    }
+    .drop-title{ font-weight:600; font-size:15.5px; }
+    .drop-sub{ color:var(--muted); font-size:14px; }
+    .drop-sub span{ color:var(--accent); font-weight:550; }
+    .drop-hint{ margin-top:10px; color:var(--faint); font-size:12.5px; text-wrap:balance; }
+    .drop-hint .grp{ white-space:nowrap; }
+    .drop-zone .when-drag{ display:none; }
+    body.is-dragging .drop-zone{ border-color:var(--accent); background:var(--accent-soft); }
+    body.is-dragging .drop-zone .drop-icon{ transform:translateY(-3px); }
+    body.is-dragging .drop-zone .when-idle{ display:none; }
+    body.is-dragging .drop-zone .when-drag{ display:block; }
+    .has-file .drop-zone{ display:none; }
+    body.is-dragging .has-file .drop-zone{ display:flex; }
+    body.is-dragging .has-file .file-chip{ display:none; }
+
+    .file-chip{
+      display:flex; align-items:center; gap:14px;
+      padding:12px 12px 12px 14px;
+      border:1px solid var(--border); border-radius:14px; background:var(--surface-2);
+    }
+    .file-chip.is-error{ border-color:color-mix(in srgb, var(--err) 45%, transparent); background:var(--err-soft); }
+    .file-ico{
+      flex:none; width:40px; height:40px; border-radius:10px;
+      display:grid; place-items:center;
+      background:var(--surface); border:1px solid var(--border); color:var(--muted);
+    }
+    .file-chip.is-ok .file-ico{ color:var(--ok); }
+    .file-chip.is-error .file-ico{ color:var(--err); }
+    .file-body{ flex:1; min-width:0; }
+    .file-name{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .file-meta{ font-size:13px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .file-actions{ display:flex; align-items:center; gap:4px; flex:none; }
+    .file-body{ cursor:pointer; }
+    @media (max-width:479px){
+      .file-chip{ gap:12px; padding:12px 8px 12px 12px; }
+      .file-actions .btn-sm{ display:none; }
+      .file-name{ white-space:normal; overflow-wrap:anywhere; line-height:1.35; }
+      .file-meta{ white-space:normal; margin-top:2px; }
+    }
+
+    .aside-line{ margin:14px 0 0; font-size:13.5px; color:var(--muted); }
+
+    /* ===== Step 2: fields */
+    .grid-2{ display:grid; gap:18px; }
+    @media (min-width:600px){ .grid-2{ grid-template-columns:1fr 1fr; gap:20px; } }
+    .grid-4{ display:grid; gap:14px; grid-template-columns:1fr 1fr; }
+    @media (min-width:600px){ .grid-4{ grid-template-columns:repeat(4,1fr); } }
+    .lbl{ display:flex; align-items:baseline; gap:6px; margin-bottom:7px; font-size:13.5px; font-weight:600; }
+    .lbl .tech{ font-family:var(--mono); font-size:11.5px; font-weight:400; color:var(--faint); }
     .field{
-      appearance: none;
-      width: 100%;
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      padding: .72rem .9rem;
-      transition: box-shadow .2s ease, border-color .2s ease, transform .02s ease;
+      width:100%; height:44px; padding:0 13px;
+      border:1px solid var(--border-strong); border-radius:var(--radius-sm);
+      background:var(--surface); color:var(--text);
+      font:inherit; font-size:15px;
+      transition:border-color .15s, box-shadow .15s;
     }
-    .field:focus{
-      outline: none;
-      border-color: #93c5fd;
-      box-shadow: 0 0 0 4px rgba(59,130,246,.15);
+    .field:hover{ border-color:var(--faint); }
+    .field:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--ring); }
+    .field.mono{ font-size:14px; letter-spacing:.01em; }
+    .field::-webkit-calendar-picker-indicator{ opacity:.55; cursor:pointer; }
+    .hint{ margin:7px 0 0; font-size:12.5px; line-height:1.45; color:var(--muted); }
+    .hint code{ font-size:11.5px; color:var(--text); }
+
+    .advanced{ margin-top:22px; border-top:1px solid var(--border); padding-top:16px; }
+    .advanced summary{
+      display:flex; align-items:center; gap:8px; cursor:pointer; list-style:none;
+      font-size:14px; font-weight:550; color:var(--muted);
+      border-radius:8px;
     }
+    .advanced summary::-webkit-details-marker{ display:none; }
+    .advanced summary:hover{ color:var(--text); }
+    .advanced .chev{ transition:transform .15s; flex:none; }
+    .advanced[open] .chev{ transform:rotate(90deg); }
+    .adv-values{ margin-left:auto; font-family:var(--mono); font-size:12.5px; font-weight:400; color:var(--faint); white-space:nowrap; }
+    .adv-values.changed{ color:var(--warn); }
+    .adv-body{ padding-top:16px; }
+    .adv-foot{ display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:12px; }
+    .adv-foot .hint{ margin:0; }
+
+    /* ===== Step 3: preview */
+    .empty{
+      margin:0; padding:26px 16px; text-align:center;
+      border:1px dashed var(--border); border-radius:14px;
+      color:var(--faint); font-size:14px;
+    }
+    .stats{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+    @media (min-width:600px){ .stats{ grid-template-columns:repeat(4,1fr); } }
+    .stat{ padding:12px 14px; border:1px solid var(--border); border-radius:12px; background:var(--surface-2); }
+    .stat b{ display:block; font-size:22px; line-height:1.2; font-weight:650; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+    .stat span{ font-size:12.5px; color:var(--muted); }
+    .stat.is-zero b{ color:var(--faint); }
+
+    .notice{
+      display:flex; gap:11px; align-items:flex-start;
+      margin-top:14px; padding:13px 15px; border-radius:12px;
+      font-size:14px; line-height:1.5;
+    }
+    .notice > svg{ flex:none; margin-top:2px; }
+    .notice-warn{ background:var(--warn-soft); color:var(--warn); }
+    .notice-err{ background:var(--err-soft); color:var(--err); }
+    .notice-ok{ background:var(--ok-soft); color:var(--ok); align-items:center; }
+    .notice strong{ font-weight:620; }
+    .notice ul{ margin:4px 0 0; padding-left:18px; }
+    .notice li{ margin:1px 0; }
+    .notice .note{ display:block; margin-top:6px; opacity:.85; font-size:13px; }
+    .notice .note code{ font-size:12px; overflow-wrap:anywhere; }
+    .notice-ok .grow{ flex:1; min-width:0; }
+
+    .table-tools{
+      display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+      gap:8px 16px; margin:20px 0 10px;
+      font-size:13px; color:var(--muted);
+    }
+    .tools-r{ display:flex; align-items:center; gap:16px; }
+    .check{ display:inline-flex; align-items:center; gap:7px; cursor:pointer; user-select:none; }
+    .check input{ width:15px; height:15px; margin:0; accent-color:var(--accent); }
+    .table-wrap{ border:1px solid var(--border); border-radius:12px; overflow:auto; max-height:440px; }
+    table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+    th{
+      position:sticky; top:0; z-index:1;
+      padding:9px 12px; text-align:left; white-space:nowrap;
+      background:var(--surface-2); border-bottom:1px solid var(--border);
+      font-size:12px; font-weight:600; color:var(--muted);
+    }
+    td{
+      padding:9px 12px; white-space:nowrap;
+      max-width:240px; overflow:hidden; text-overflow:ellipsis;
+      border-bottom:1px solid var(--border);
+    }
+    tbody tr:last-child td{ border-bottom:0; }
+    td.num, th.num{ width:1%; padding-right:4px; color:var(--faint); font-variant-numeric:tabular-nums; }
+    td.tel{ font-family:var(--mono); font-size:12.5px; font-variant-numeric:tabular-nums; }
+    td.flag{ background:var(--warn-soft); color:var(--warn); }
+    td.blank::before{ content:attr(data-empty); color:var(--faint); }
+    td.flag.blank::before{ color:var(--warn); font-family:var(--font); font-size:12px; }
+    .table-empty{ padding:22px 12px; text-align:center; color:var(--faint); }
+
+    .out{
+      display:flex; flex-direction:column; gap:14px;
+      margin-top:22px; padding-top:20px; border-top:1px solid var(--border);
+    }
+    @media (min-width:600px){ .out{ flex-direction:row; align-items:center; justify-content:space-between; gap:20px; } }
+    .out-label{ font-size:12.5px; color:var(--muted); }
+    .out-name{ margin-top:2px; font-family:var(--mono); font-size:13.5px; font-weight:500; overflow-wrap:anywhere; }
+    .out-name .d{ color:var(--accent); }
+
+    /* ===== Buttons */
     .btn{
-      border-radius: 12px;
-      padding: .78rem 1rem;
-      font-weight: 600;
-      transition: transform .04s ease, box-shadow .25s ease, background .2s ease, color .2s ease;
+      display:inline-flex; align-items:center; justify-content:center; gap:9px;
+      height:46px; padding:0 20px; flex:none;
+      border:1px solid transparent; border-radius:12px;
+      font:inherit; font-size:15px; font-weight:600; white-space:nowrap;
+      cursor:pointer; text-decoration:none;
+      transition:background .15s, color .15s, border-color .15s, transform .05s, box-shadow .15s;
     }
-    .btn:active{ transform: translateY(1px); }
-    .btn-primary{
-      background: linear-gradient(180deg, #111827 0%, #0b1220 100%);
-      color: #fff;
-      box-shadow:
-        0 12px 24px rgba(17,24,39,.15),
-        inset 0 1px 0 rgba(255,255,255,.12);
+    .btn:active:not(:disabled){ transform:translateY(1px); }
+    .btn-primary{ background:var(--ink); color:var(--ink-text); box-shadow:0 6px 16px rgba(16,24,40,.14); }
+    .btn-primary:hover:not(:disabled){ background:var(--ink-hover); }
+    .btn-primary:disabled{ background:var(--surface-2); color:var(--faint); border-color:var(--border); box-shadow:none; cursor:not-allowed; }
+    .btn-sm{ height:34px; padding:0 12px; font-size:13.5px; font-weight:550; border-radius:9px; }
+    .btn-ghost{ background:var(--surface); color:var(--text); border-color:var(--border-strong); }
+    .btn-ghost:hover{ border-color:var(--faint); }
+    .icon-btn{
+      width:34px; height:34px; display:grid; place-items:center;
+      border:0; border-radius:9px; background:transparent; color:var(--muted); cursor:pointer;
     }
-    .btn-primary:hover{ filter: brightness(1.04); }
-    .btn-ghost{
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      color: #111827;
+    .icon-btn:hover{ background:var(--border); color:var(--text); }
+    .link{
+      padding:0; border:0; background:none; cursor:pointer;
+      font:inherit; color:var(--accent); font-weight:550;
+      text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:3px;
+      text-decoration-color:color-mix(in srgb, var(--accent) 40%, transparent);
     }
-    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
+    .link:hover{ text-decoration-color:currentColor; }
+    @media (max-width:599px){ .out .btn{ width:100%; } }
+
+    footer{ padding:18px 0 4px; text-align:center; font-size:12.5px; color:var(--faint); }
+
+    @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
   </style>
 </head>
-<body class="text-slate-900 antialiased">
-  <main class="max-w-4xl mx-auto px-6 py-10">
-    <header class="mb-8">
-      <h1 class="text-3xl md:text-4xl font-semibold tracking-tight">Hello Brieux</h1>
-      <p class="text-slate-600 mt-3 max-w-2xl">
-        Déposez l’export (souvent <span class="mono">UTF-16 + tabs</span>), choisissez le
-        <span class="mono">broker</span> et la date — recevez un CSV normalisé (séparateur <span class="mono">|</span>, <span class="mono">UTF-8</span>).
+<body>
+  <main class="wrap">
+    <header class="top">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+        </div>
+        <div>
+          <h1>Hello Brieux</h1>
+          <p class="brand-sub">Lead Transformer · DPR</p>
+        </div>
+      </div>
+      <p class="lede">
+        Transforme l’export brut d’un formulaire Facebook ou&nbsp;Instagram
+        en&nbsp;fichier&nbsp;<code>INIT_LEADS</code> prêt à&nbsp;importer.
       </p>
+      <span class="trust">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        Tout reste dans votre navigateur
+      </span>
     </header>
 
-    <section class="container-card p-6 md:p-7 mb-6">
-      <div class="grid md:grid-cols-2 gap-6">
-        <div>
-          <label class="block text-sm font-medium mb-1">Fichier d’entrée (CSV)</label>
-          <input id="fileInput" type="file" accept=".csv,text/csv" class="field">
-          <p class="text-slate-500 text-xs mt-1">Export formulaire (souvent UTF-16 + tabulations).</p>
-        </div>
+    <!-- 1. Fichier -->
+    <section class="card" aria-labelledby="h1s">
+      <div class="step-head">
+        <span class="step-n" id="n1"><span>1</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+        <h2 id="h1s">Fichier source</h2>
+      </div>
 
-        <div>
-          <label class="block text-sm font-medium mb-1">
-            Broker <span class="text-slate-400">(champ <span class="mono">partner_name</span>)</span>
-          </label>
-          <input id="broker" type="text" class="field" placeholder="PAID_LEAD" value="PAID_LEAD">
-          <p class="text-slate-500 text-xs mt-1">Appliqué à toutes les lignes.</p>
-        </div>
+      <div id="drop">
+        <input id="fileInput" type="file" accept=".csv,.tsv,.txt,text/csv,text/plain" class="sr-only">
+        <label for="fileInput" class="drop-zone">
+          <span class="drop-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4M7 9l5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+          </span>
+          <span class="drop-title when-idle">Déposez l’export CSV ici</span>
+          <span class="drop-title when-drag">Relâchez pour charger le&nbsp;fichier</span>
+          <span class="drop-sub when-idle">ou <span>choisissez un&nbsp;fichier</span></span>
+          <span class="drop-hint"><span class="grp">UTF‑16 ou UTF‑8</span> · <span class="grp">séparateur détecté automatiquement</span></span>
+        </label>
 
-        <div>
-          <label class="block text-sm font-medium mb-1">Date <span class="text-slate-400">(YYYY-MM-DD)</span></label>
-          <input id="date" type="text" class="field" placeholder="auto : aujourd’hui (Europe/Paris)">
-          <p class="text-slate-500 text-xs mt-1">Utilisée pour <span class="mono">creation_date</span> et <span class="mono">last_interaction_date</span>.</p>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium mb-1">brand_code</label>
-            <input id="brand" type="text" class="field" value="PR">
+        <div class="file-chip" id="fileChip" hidden>
+          <span class="file-ico" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg>
+          </span>
+          <div class="file-body">
+            <div class="file-name" id="fileName"></div>
+            <div class="file-meta" id="fileMeta"></div>
           </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">country_code</label>
-            <input id="country" type="text" class="field" value="FR">
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">language_code</label>
-            <input id="lang" type="text" class="field" value="FR">
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">collected_mode</label>
-            <input id="collected" type="text" class="field" value="CRG">
+          <div class="file-actions">
+            <label for="fileInput" class="btn btn-ghost btn-sm">Changer</label>
+            <button type="button" class="icon-btn" id="btnRemove" aria-label="Retirer le fichier" title="Retirer le fichier">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            </button>
           </div>
         </div>
       </div>
 
-      <div class="mt-6 flex flex-wrap gap-3">
-        <button id="btnConvert" class="btn btn-primary">Convertir & Télécharger</button>
-        <button id="btnSample" class="btn btn-ghost">CSV exemple</button>
+      <div id="fileError" class="notice notice-err" role="alert" hidden>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>
+        <div id="fileErrorText"></div>
       </div>
 
-      <p id="status" class="text-slate-600 text-sm mt-4"></p>
+      <p class="aside-line" id="sampleLine">
+        Pas de fichier sous la main&#8239;? <button type="button" class="link" id="btnTrySample">Essayer avec l’exemple</button>
+        ou <button type="button" class="link" id="btnSample">le&nbsp;télécharger</button>.
+      </p>
     </section>
 
-    <footer class="text-xs text-slate-500 text-center py-6">
-      Réalisé par 24tiy pour un usage interne au sein de DPR.
-    </footer>
+    <!-- 2. Paramètres -->
+    <section class="card" aria-labelledby="h2s">
+      <div class="step-head">
+        <span class="step-n"><span>2</span></span>
+        <h2 id="h2s">Paramètres</h2>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label class="lbl" for="broker">Broker <span class="tech">partner_name</span></label>
+          <input id="broker" type="text" class="field mono" value="PAID_LEAD" placeholder="PAID_LEAD" list="brokerList" autocomplete="off" spellcheck="false">
+          <datalist id="brokerList"></datalist>
+          <p class="hint">Identique pour toutes les&nbsp;lignes.</p>
+        </div>
+        <div>
+          <label class="lbl" for="date">Date <span class="tech">creation_date</span></label>
+          <input id="date" type="date" class="field">
+          <p class="hint">Aussi pour <code>last_interaction_date</code>.</p>
+        </div>
+      </div>
+
+      <details class="advanced" id="advanced">
+        <summary>
+          <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+          Codes fixes
+          <span class="adv-values" id="advValues">PR · FR · FR · CRG</span>
+        </summary>
+        <div class="adv-body">
+          <div class="grid-4">
+            <div>
+              <label class="lbl" for="brand">Marque</label>
+              <input id="brand" type="text" class="field mono" value="PR" data-default="PR" spellcheck="false" autocomplete="off">
+              <p class="hint"><code>brand_code</code></p>
+            </div>
+            <div>
+              <label class="lbl" for="country">Pays</label>
+              <input id="country" type="text" class="field mono" value="FR" data-default="FR" spellcheck="false" autocomplete="off">
+              <p class="hint"><code>country_code</code></p>
+            </div>
+            <div>
+              <label class="lbl" for="lang">Langue</label>
+              <input id="lang" type="text" class="field mono" value="FR" data-default="FR" spellcheck="false" autocomplete="off">
+              <p class="hint"><code>language_code</code></p>
+            </div>
+            <div>
+              <label class="lbl" for="collected">Collecte</label>
+              <input id="collected" type="text" class="field mono" value="CRG" data-default="CRG" spellcheck="false" autocomplete="off">
+              <p class="hint"><code>collected_mode</code></p>
+            </div>
+          </div>
+          <div class="adv-foot">
+            <p class="hint">À&nbsp;modifier uniquement si l’import l’exige.</p>
+            <button type="button" class="link" id="btnResetAdv" hidden>Rétablir</button>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- 3. Aperçu & téléchargement -->
+    <section class="card" aria-labelledby="h3s">
+      <div class="step-head">
+        <span class="step-n" id="n3"><span>3</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+        <h2 id="h3s">Vérifier et télécharger</h2>
+      </div>
+
+      <p class="empty" id="emptyPreview">L’aperçu des leads s’affichera ici dès que le&nbsp;fichier sera&nbsp;chargé.</p>
+
+      <div id="preview" hidden>
+        <div class="stats">
+          <div class="stat" id="cTotal"><b>0</b><span>leads</span></div>
+          <div class="stat" id="cMobile"><b>0</b><span>mobiles</span></div>
+          <div class="stat" id="cFix"><b>0</b><span>fixes</span></div>
+          <div class="stat" id="cNone"><b>0</b><span>sans téléphone</span></div>
+        </div>
+
+        <div class="notice notice-warn" id="warnings" hidden>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5L2.5 20h19z"/><path d="M12 10v4.5M12 17.2v.01"/></svg>
+          <div>
+            <strong>À&nbsp;vérifier</strong>
+            <ul id="warnList"></ul>
+            <span class="note">Signalé pour information&nbsp;: le&nbsp;fichier est généré tel&nbsp;quel.</span>
+          </div>
+        </div>
+
+        <div class="table-tools">
+          <span id="tableCaption"></span>
+          <span class="tools-r">
+            <label class="check" id="onlyIssuesWrap" hidden><input type="checkbox" id="onlyIssues"> Lignes à&nbsp;vérifier</label>
+            <button type="button" class="link" id="btnToggleAll" hidden></button>
+          </span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th class="num">#</th><th>Prénom</th><th>Nom</th><th>Email</th><th>Mobile</th><th>Fixe</th></tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="out">
+        <div>
+          <div class="out-label">Fichier généré</div>
+          <div class="out-name" id="outName"></div>
+        </div>
+        <button id="btnConvert" type="button" class="btn btn-primary" disabled>
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M5 20h14"/></svg>
+          Télécharger le&nbsp;CSV
+        </button>
+      </div>
+
+      <div class="notice notice-ok" id="done" role="status" hidden>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+        <span class="grow" id="doneText"></span>
+        <button type="button" class="link" id="btnAnother">Convertir un autre fichier</button>
+      </div>
+    </section>
+
+    <footer>Réalisé par 24tiy pour un usage interne au&nbsp;sein de&nbsp;DPR.</footer>
   </main>
 
   <script>
-    // ===== Utils
+  (() => {
+    'use strict';
+    const $ = id => document.getElementById(id);
+    const NB = '\u00a0';   // espace insécable
+    const NNB = '\u202f';  // espace fine insécable (avant : ; ! ?)
+
+    // ===================================================================
+    // Conversion — logique identique à la version précédente
+    // ===================================================================
     const tzParis = 'Europe/Paris';
     const todayParisISO = () =>
       new Intl.DateTimeFormat('en-CA', { timeZone: tzParis }).format(new Date()); // YYYY-MM-DD
@@ -135,23 +528,14 @@
     // Normalise diverse date inputs to strict YYYYMMDD (pads with zeros). Fallback = today.
     function toYMD(dateStr){
       const s = String(dateStr || '').trim();
-      // 1) Prefer explicit YYYY-MM-DD (allow single-digit month/day)
       let m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
       if (m){
-        const y = m[1];
-        const mo = String(m[2]).padStart(2,'0');
-        const d = String(m[3]).padStart(2,'0');
-        return `${y}${mo}${d}`;
+        return `${m[1]}${String(m[2]).padStart(2,'0')}${String(m[3]).padStart(2,'0')}`;
       }
-      // 2) Try DD/MM/YYYY or DD-MM-YYYY
       m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
       if (m){
-        const d = String(m[1]).padStart(2,'0');
-        const mo = String(m[2]).padStart(2,'0');
-        const y = m[3];
-        return `${y}${mo}${d}`;
+        return `${m[3]}${String(m[2]).padStart(2,'0')}${String(m[1]).padStart(2,'0')}`;
       }
-      // 3) Try Date() parse (last resort, timezone Paris)
       const dt = new Date(s);
       if (!isNaN(dt.getTime())){
         const y = dt.getFullYear();
@@ -159,13 +543,8 @@
         const d = String(dt.getDate()).padStart(2,'0');
         return `${y}${mo}${d}`;
       }
-      // 4) Fallback: today in Paris
-      const today = todayParisISO(); // YYYY-MM-DD
-      return today.replace(/-/g,'');
+      return todayParisISO().replace(/-/g,'');
     }
-
-    // Names as-is (just trim)
-    function passName(str){ return String(str ?? '').trim(); }
 
     function parseFRPhone(v){
       if (v == null) return '';
@@ -209,8 +588,8 @@
       return head + '\n' + body + '\n';
     }
 
-    function download(filename, text){
-      const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
+    function download(filename, data, type = 'text/csv;charset=utf-8'){
+      const blob = new Blob([data], { type });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = filename;
@@ -218,119 +597,444 @@
       setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
     }
 
-    function status(msg){ document.getElementById('status').textContent = msg; }
+    const OUT_HEADER = [
+      'brand_code','country_code','partner_name','title','first_name','last_name','birthdate','email',
+      'zip_code','mobil_phone','fix_phone','language_code','collected_mode','creation_date',
+      'internal_consent','creation_date_internal_consent','partner_consent','creation_date_partner_consent',
+      'last_interaction_date'
+    ];
+    const REQUIRED = ['prénom','nom_de_famille','email','phone_number'];
 
-    // Sample CSV (UTF-16LE + tabs) for quick test
-    document.getElementById('btnSample').addEventListener('click', () => {
+    // Lecture du fichier (UTF-16 aware). UTF-16 BE reconnu via BOM / position des octets nuls.
+    async function readFileText(f){
+      let text = await f.text();
+      const h = new Uint8Array(await f.slice(0, 2).arrayBuffer());
+      let encoding = (h[0] === 0xFF && h[1] === 0xFE) ? 'UTF‑16 LE'
+                   : (h[0] === 0xFE && h[1] === 0xFF) ? 'UTF‑16 BE' : 'UTF‑8';
+      if (/\x00/.test(text)){
+        const buf = await f.arrayBuffer();
+        const big = looksUTF16BE(new Uint8Array(buf));
+        text = new TextDecoder(big ? 'utf-16be' : 'utf-16le').decode(buf);
+        encoding = big ? 'UTF‑16 BE' : 'UTF‑16 LE';
+        if (!big && !text.trim()){ text = new TextDecoder('utf-16be').decode(buf); encoding = 'UTF‑16 BE'; }
+      }
+      return { text, encoding };
+    }
+    function looksUTF16BE(b){
+      if (b[0] === 0xFE && b[1] === 0xFF) return true;
+      if (b[0] === 0xFF && b[1] === 0xFE) return false;
+      let even = 0, odd = 0;
+      for (let i = 0, n = Math.min(b.length, 512); i < n; i++) if (b[i] === 0) (i % 2 ? odd++ : even++);
+      return even > odd;
+    }
+
+    // Parse + validation (mêmes règles et messages qu'avant)
+    function parseSource(text){
+      const delim = detectDelimiter(text);
+      const { header, rows } = parseCSV(text, delim);
+      if (!rows.length) return { error: 'Fichier vide ou non reconnu.' };
+      const have = new Set(header.map(h => h.toLowerCase()));
+      const lowerMap = Object.fromEntries(header.map(h => [h.toLowerCase(), h]));
+      const missing = REQUIRED.filter(c => !have.has(c));
+      if (missing.length) return { error: 'Colonnes manquantes', missing, header };
+      return { delim, header, rows, lowerMap };
+    }
+
+    function readParams(){
+      const v = id => $(id).value.trim();
+      const dateRaw = v('date') || todayParisISO();
+      return {
+        broker:    v('broker')    || 'PAID_LEAD',
+        brand:     v('brand')     || 'PR',
+        country:   v('country')   || 'FR',
+        lang:      v('lang')      || 'FR',
+        collected: v('collected') || 'CRG',
+        ymd:       toYMD(dateRaw)
+      };
+    }
+    const fileNameFor = ymd => `INIT_LEADS_PRFR_${ymd}000003.csv`;
+
+    function buildRows(src, p){
+      const iso = `${p.ymd.slice(0,4)}-${p.ymd.slice(4,6)}-${p.ymd.slice(6,8)}`;
+      const L = src.lowerMap;
+      return src.rows.map(r => {
+        const first = String(r[ L['prénom'] ] ?? '').trim();
+        const last  = String(r[ L['nom_de_famille'] ] ?? '').trim();
+        const email = (r[ L['email'] ] ?? '').trim();
+        const phone = parseFRPhone(r[ L['phone_number'] ]);
+
+        let mobil = '', fix = '';
+        if (phone){
+          if (phone.startsWith('6') || phone.startsWith('7')) mobil = phone;
+          else fix = phone;
+        }
+
+        return {
+          brand_code: p.brand,
+          country_code: p.country,
+          partner_name: p.broker,
+          title: '',
+          first_name: first,
+          last_name: last,
+          birthdate: '',
+          email: email,
+          zip_code: '',
+          mobil_phone: mobil,
+          fix_phone: fix,
+          language_code: p.lang,
+          collected_mode: p.collected,
+          creation_date: iso,
+          internal_consent: 'True',
+          creation_date_internal_consent: '',
+          partner_consent: 'False',
+          creation_date_partner_consent: '',
+          last_interaction_date: iso
+        };
+      });
+    }
+
+    // ===================================================================
+    // Contrôle qualité — informatif uniquement, ne modifie pas la sortie
+    // ===================================================================
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const ISSUE_LABELS = {
+      'name':    'sans nom ni prénom',
+      'email':   'sans email',
+      'email-f': 'avec un email mal formé',
+      'dup':     'avec un email en double',
+      'tel-x':   'avec un numéro illisible',
+      'tel-?':   'avec un numéro hors +33 ou de longueur inhabituelle'
+    };
+
+    function analyse(src, out){
+      const L = src.lowerMap;
+      const seen = new Set();
+      const counts = { total: out.length, mobile: 0, fix: 0, none: 0 };
+      const issueCount = {};
+      const rows = out.map((o, i) => {
+        const flags = new Set();
+        const raw = String(src.rows[i][ L['phone_number'] ] ?? '').trim();
+        const rawDigits = raw.replace(/[^0-9+]/g, '');
+
+        if (!o.first_name && !o.last_name) flags.add('name');
+
+        if (!o.email) flags.add('email');
+        else if (!EMAIL_RE.test(o.email)) flags.add('email-f');
+        else {
+          const k = o.email.toLowerCase();
+          if (seen.has(k)) flags.add('dup'); else seen.add(k);
+        }
+
+        const tel = o.mobil_phone || o.fix_phone;
+        if (o.mobil_phone) counts.mobile++;
+        else if (o.fix_phone) counts.fix++;
+        else counts.none++;
+        if (!tel && rawDigits) flags.add('tel-x');
+        if (tel && (tel.length !== 9 || (rawDigits.startsWith('+') && !rawDigits.startsWith('+33')))) flags.add('tel-?');
+
+        flags.forEach(f => { issueCount[f] = (issueCount[f] || 0) + 1; });
+        return { o, flags, n: i + 1 };
+      });
+      return { counts, issueCount, rows, flagged: rows.filter(r => r.flags.size).length };
+    }
+
+    // ===================================================================
+    // UI
+    // ===================================================================
+    const state = { file: null, src: null, encoding: '', report: null, showAll: false, token: 0 };
+    const PREVIEW_ROWS = 8;
+    const MAX_ROWS = 500;
+    const fmtInt = n => new Intl.NumberFormat('fr-FR').format(n).replace(/\s/g, NNB);
+    const plural = (n, one, many) => `${fmtInt(n)}${NB}${n > 1 ? many : one}`;
+    const DELIM_NAMES = { '\t': 'tabulations', ';': 'points-virgules', ',': 'virgules', '|': 'pipes' };
+
+    function fmtSize(bytes){
+      if (bytes < 1024) return `${bytes}${NB}o`;
+      const kb = bytes / 1024;
+      if (kb < 1024) return `${kb.toLocaleString('fr-FR', { maximumFractionDigits: kb < 10 ? 1 : 0 })}${NB}Ko`;
+      return `${(kb/1024).toLocaleString('fr-FR', { maximumFractionDigits: 1 })}${NB}Mo`;
+    }
+
+    // ---- Nom du fichier de sortie (mis à jour en direct)
+    function renderOutName(){
+      const ymd = readParams().ymd;
+      const el = $('outName');
+      el.textContent = '';
+      el.append('INIT_LEADS_PRFR_');
+      const d = document.createElement('span'); d.className = 'd'; d.textContent = ymd;
+      el.append(d, '000003.csv');
+    }
+
+    // ---- Codes fixes
+    const ADV = ['brand','country','lang','collected'];
+    function renderAdvanced(){
+      const vals = ADV.map(id => $(id).value.trim() || $(id).dataset.default);
+      const changed = ADV.some(id => $(id).value.trim() !== $(id).dataset.default);
+      $('advValues').textContent = vals.join(' · ');
+      $('advValues').classList.toggle('changed', changed);
+      $('btnResetAdv').hidden = !changed;
+    }
+
+    // ---- Broker récents (confort, stockés localement)
+    const BROKER_KEY = 'hello-brieux.brokers';
+    function loadBrokers(){
+      try { return JSON.parse(localStorage.getItem(BROKER_KEY)) || []; } catch { return []; }
+    }
+    function rememberBroker(b){
+      try {
+        const list = [b, ...loadBrokers().filter(x => x !== b)].slice(0, 8);
+        localStorage.setItem(BROKER_KEY, JSON.stringify(list));
+      } catch {}
+      renderBrokerList();
+    }
+    function renderBrokerList(){
+      const dl = $('brokerList'); dl.textContent = '';
+      new Set(['PAID_LEAD', ...loadBrokers()]).forEach(b => {
+        const o = document.createElement('option'); o.value = b; dl.append(o);
+      });
+    }
+
+    // ---- Fichier
+    async function loadFile(f){
+      const token = ++state.token;
+      state.file = f; state.src = null; state.report = null; state.showAll = false;
+      $('onlyIssues').checked = false;
+      hideDone();
+      $('drop').classList.add('has-file');
+      $('fileChip').hidden = false;
+      $('fileChip').className = 'file-chip';
+      $('fileName').textContent = f.name;
+      $('fileMeta').textContent = `${fmtSize(f.size)} · lecture…`;
+      $('fileError').hidden = true;
+      $('sampleLine').hidden = true;
+
+      try {
+        const { text, encoding } = await readFileText(f);
+        if (token !== state.token) return;
+        const src = parseSource(text);
+        state.encoding = encoding;
+        if (src.error){
+          showFileError(src);
+        } else {
+          state.src = src;
+          state.report = analyse(src, buildRows(src, readParams()));
+          $('fileChip').classList.add('is-ok');
+          $('fileMeta').textContent =
+            `${fmtSize(f.size)} · ${encoding} · ${DELIM_NAMES[src.delim] || 'séparateur ' + src.delim} · ${plural(src.rows.length, 'lead', 'leads')}`;
+        }
+      } catch (e){
+        console.error(e);
+        if (token !== state.token) return;
+        showFileError({ error: 'Lecture impossible : ' + (e.message || e) });
+      }
+      render();
+    }
+
+    function showFileError(src){
+      $('fileChip').classList.add('is-error');
+      $('fileMeta').textContent = `${fmtSize(state.file.size)} · fichier non reconnu`;
+      const box = $('fileErrorText'); box.textContent = '';
+      const strong = document.createElement('strong');
+      if (src.missing){
+        strong.textContent = `Colonnes manquantes${NNB}: `;
+        box.append(strong, src.missing.join(', ') + '.');
+        const cols = document.createElement('span'); cols.className = 'note';
+        const found = src.header.filter(Boolean);
+        if (found.length){
+          const list = document.createElement('code');
+          list.textContent = found.slice(0, 20).join(', ') + (found.length > 20 ? '…' : '');
+          cols.append(`Colonnes trouvées${NNB}: `, list);
+        } else {
+          cols.textContent = 'Aucune colonne lue dans la première ligne.';
+        }
+        box.append(cols);
+      } else {
+        strong.textContent = src.error.replace(/\s:\s/, `${NNB}: `);
+        box.append(strong);
+      }
+      $('fileError').hidden = false;
+    }
+
+    function clearFile(){
+      state.token++;
+      state.file = null; state.src = null; state.report = null;
+      $('fileInput').value = '';
+      $('drop').classList.remove('has-file');
+      $('fileChip').hidden = true;
+      $('fileError').hidden = true;
+      $('sampleLine').hidden = false;
+      hideDone();
+      render();
+    }
+
+    // ---- Aperçu
+    function setStat(id, n){
+      const el = $(id);
+      el.querySelector('b').textContent = fmtInt(n);
+      el.classList.toggle('is-zero', n === 0);
+    }
+
+    function render(){
+      const ready = !!(state.src && state.report);
+      $('n1').classList.toggle('done', ready);
+      $('btnConvert').disabled = !ready;
+      $('emptyPreview').hidden = ready;
+      $('preview').hidden = !ready;
+      $('emptyPreview').textContent = state.file && !ready && !$('fileError').hidden
+        ? `Chargez un export qui contient les${NB}colonnes attendues pour voir l’aperçu.`
+        : `L’aperçu des leads s’affichera ici dès que le${NB}fichier sera${NB}chargé.`;
+      if (!ready) return;
+
+      const { counts, issueCount, rows, flagged } = state.report;
+      setStat('cTotal', counts.total);
+      setStat('cMobile', counts.mobile);
+      setStat('cFix', counts.fix);
+      setStat('cNone', counts.none);
+      $('cTotal').querySelector('span').textContent = counts.total > 1 ? 'leads' : 'lead';
+      $('cMobile').querySelector('span').textContent = counts.mobile > 1 ? 'mobiles' : 'mobile';
+      $('cFix').querySelector('span').textContent = counts.fix > 1 ? 'fixes' : 'fixe';
+
+      // Avertissements
+      const wl = $('warnList'); wl.textContent = '';
+      Object.keys(ISSUE_LABELS).forEach(k => {
+        const n = issueCount[k]; if (!n) return;
+        const li = document.createElement('li');
+        li.textContent = `${plural(n, 'ligne', 'lignes')} ${ISSUE_LABELS[k]}`;
+        wl.append(li);
+      });
+      $('warnings').hidden = flagged === 0;
+      $('onlyIssuesWrap').hidden = flagged === 0;
+
+      // Tableau
+      const onlyIssues = $('onlyIssues').checked && flagged > 0;
+      const pool = onlyIssues ? rows.filter(r => r.flags.size) : rows;
+      const limit = state.showAll ? MAX_ROWS : PREVIEW_ROWS;
+      const shown = pool.slice(0, limit);
+
+      const tb = $('tbody'); tb.textContent = '';
+      const frag = document.createDocumentFragment();
+      shown.forEach(({ o, flags, n }) => {
+        const tr = document.createElement('tr');
+        const cell = (val, cls, flag, emptyLabel = '—') => {
+          const td = document.createElement('td');
+          if (cls) td.className = cls;
+          if (flag) td.classList.add('flag');
+          if (val) { td.textContent = val; td.title = val; }
+          else { td.classList.add('blank'); td.dataset.empty = flag ? emptyLabel : '—'; }
+          tr.append(td);
+        };
+        cell(String(n), 'num');
+        cell(o.first_name, '', flags.has('name'), 'manquant');
+        cell(o.last_name, '', flags.has('name'), 'manquant');
+        cell(o.email, '', flags.has('email') || flags.has('email-f') || flags.has('dup'), 'manquant');
+        cell(o.mobil_phone, 'tel', flags.has('tel-x') || (flags.has('tel-?') && !!o.mobil_phone), 'illisible');
+        cell(o.fix_phone, 'tel', flags.has('tel-?') && !!o.fix_phone);
+        frag.append(tr);
+      });
+      tb.append(frag);
+
+      const total = pool.length;
+      const what = onlyIssues ? plural(total, 'ligne à vérifier', 'lignes à vérifier') : plural(total, 'ligne', 'lignes');
+      $('tableCaption').textContent = shown.length < total
+        ? `${fmtInt(shown.length)} premières sur ${what}`
+        : what;
+
+      const canExpand = total > PREVIEW_ROWS;
+      $('btnToggleAll').hidden = !canExpand;
+      $('btnToggleAll').textContent = state.showAll
+        ? 'Réduire'
+        : `Tout afficher${total > MAX_ROWS ? ` (${fmtInt(MAX_ROWS)}${NB}max.)` : ''}`;
+    }
+
+    // ---- Téléchargement
+    function hideDone(){ $('done').hidden = true; $('n3').classList.remove('done'); }
+
+    $('btnConvert').addEventListener('click', () => {
+      if (!state.src) return;
+      try {
+        const p = readParams();
+        const csv = toPipeCSV(buildRows(state.src, p), OUT_HEADER);
+        const filename = fileNameFor(p.ymd);
+        download(filename, csv);
+        rememberBroker(p.broker);
+        $('doneText').textContent = `${filename} téléchargé · ${plural(state.src.rows.length, 'lead', 'leads')}`;
+        $('done').hidden = false;
+        $('n3').classList.add('done');
+      } catch (e){
+        console.error(e);
+        $('doneText').textContent = '';
+        alert('Erreur : ' + (e.message || e));
+      }
+    });
+
+    $('btnAnother').addEventListener('click', () => { clearFile(); $('fileInput').focus(); });
+
+    // ---- Exemple (UTF-16LE + tabulations)
+    function sampleBytes(){
       const sample = [
         ['id','created_time','ad_id','ad_name','adset_id','adset_name','campaign_id','campaign_name','form_id','form_name','is_organic','platform','prénom','nom_de_famille','email','phone_number','lead_status'],
         ['l:123','2025-10-15T19:44:39+02:00','ag:123','ad','as:1','set','c:1','cmp','f:1','form','False','fb','EVELYNE','BERTRAND','eveelynebertrand75@hotmail.fr','p:+33663697077','complete'],
         ['l:124','2025-10-15T19:07:32+02:00','ag:123','ad','as:1','set','c:1','cmp','f:1','form','False','fb','Stéphanie','Lavier','st.lavier@laposte.net','p:+33760090328','complete'],
         ['l:125','2025-10-15T19:07:32+02:00','ag:123','ad','as:1','set','c:1','cmp','f:1','form','False','fb','Valerie','Marty','valerie.marty8@orange.fr','p:+33685459498','complete'],
       ].map(r=>r.join('\t')).join('\n');
-      const bom = new Uint8Array([0xFF,0xFE]); // UTF-16LE BOM
-      const encoder = new TextEncoder('utf-16le');
-      const data = new Blob([bom, encoder.encode(sample)], { type: 'text/csv' });
-      const url = URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'input_exemple_utf16_tab.csv';
-      document.body.appendChild(a); a.click();
-      setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
-    });
-
-    // Convert
-    document.getElementById('btnConvert').addEventListener('click', async () => {
-      status('');
-      const f = document.getElementById('fileInput').files[0];
-      if (!f){ status('Choisis un fichier CSV.'); return; }
-
-      const broker    = document.getElementById('broker').value.trim()   || 'PAID_LEAD';
-      const brand     = document.getElementById('brand').value.trim()    || 'PR';
-      const country   = document.getElementById('country').value.trim()  || 'FR';
-      const lang      = document.getElementById('lang').value.trim()     || 'FR';
-      const collected = document.getElementById('collected').value.trim()|| 'CRG';
-      const dateRaw   = document.getElementById('date').value.trim()     || todayParisISO();
-      const ymd       = toYMD(dateRaw); // <-- robust YYYYMMDD
-
-      try{
-        // Read file (UTF-16 aware)
-        let text = await f.text();
-        if (/\x00/.test(text)){
-          const buf = await f.arrayBuffer();
-          text = new TextDecoder('utf-16le').decode(buf);
-          if (!text.trim()) text = new TextDecoder('utf-16be').decode(buf);
-        }
-
-        const delim = detectDelimiter(text);
-        const { header, rows } = parseCSV(text, delim);
-        if (!rows.length){ status('Fichier vide ou non reconnu.'); return; }
-
-        const need = ['prénom','nom_de_famille','email','phone_number'];
-        const have = new Set(header.map(h => h.toLowerCase()));
-        const lowerMap = Object.fromEntries(header.map(h => [h.toLowerCase(), h]));
-        const missing = need.filter(c => !have.has(c));
-        if (missing.length){
-          status('Colonnes manquantes : ' + missing.join(', ') + '.');
-          return;
-        }
-
-        const outHeader = [
-          'brand_code','country_code','partner_name','title','first_name','last_name','birthdate','email',
-          'zip_code','mobil_phone','fix_phone','language_code','collected_mode','creation_date',
-          'internal_consent','creation_date_internal_consent','partner_consent','creation_date_partner_consent',
-          'last_interaction_date'
-        ];
-
-        const outRows = rows.map(r => {
-          const first = String(r[ lowerMap['prénom'] ] ?? '').trim();
-          const last  = String(r[ lowerMap['nom_de_famille'] ] ?? '').trim();
-          const email = (r[ lowerMap['email'] ] ?? '').trim();
-          const phone = parseFRPhone(r[ lowerMap['phone_number'] ]);
-
-          let mobil = '', fix = '';
-          if (phone){
-            if (phone.startsWith('6') || phone.startsWith('7')) mobil = phone;
-            else fix = phone;
-          }
-
-          return {
-            brand_code: brand,
-            country_code: country,
-            partner_name: broker,
-            title: '',
-            first_name: first,
-            last_name: last,
-            birthdate: '',
-            email: email,
-            zip_code: '',
-            mobil_phone: mobil,
-            fix_phone: fix,
-            language_code: lang,
-            collected_mode: collected,
-            creation_date: `${ymd.slice(0,4)}-${ymd.slice(4,6)}-${ymd.slice(6,8)}`, // keep ISO in data
-            internal_consent: 'True',
-            creation_date_internal_consent: '',
-            partner_consent: 'False',
-            creation_date_partner_consent: '',
-            last_interaction_date: `${ymd.slice(0,4)}-${ymd.slice(4,6)}-${ymd.slice(6,8)}`
-          };
-        });
-
-        const outCSV = toPipeCSV(outRows, outHeader);
-
-        // STRICT filename
-        const filename = `INIT_LEADS_PRFR_${ymd}000003.csv`;
-
-        download(filename, outCSV);
-        status(`OK — ${filename} généré.`);
-      }catch(e){
-        console.error(e);
-        status('Erreur : ' + (e.message || e));
+      const out = new Uint8Array(2 + sample.length * 2);
+      out[0] = 0xFF; out[1] = 0xFE; // BOM UTF-16LE
+      for (let i = 0; i < sample.length; i++){
+        const c = sample.charCodeAt(i);
+        out[2 + i*2] = c & 0xFF; out[3 + i*2] = c >> 8;
       }
+      return out;
+    }
+    const SAMPLE_NAME = 'input_exemple_utf16_tab.csv';
+    $('btnSample').addEventListener('click', () => download(SAMPLE_NAME, sampleBytes(), 'text/csv'));
+    $('btnTrySample').addEventListener('click', () => loadFile(new File([sampleBytes()], SAMPLE_NAME, { type: 'text/csv' })));
+
+    // ---- Événements
+    $('fileInput').addEventListener('change', e => { const f = e.target.files[0]; if (f) loadFile(f); });
+    $('btnRemove').addEventListener('click', clearFile);
+    $('fileChip').querySelector('.file-body').addEventListener('click', () => $('fileInput').click());
+    $('onlyIssues').addEventListener('change', () => { state.showAll = false; render(); });
+    $('btnToggleAll').addEventListener('click', () => { state.showAll = !state.showAll; render(); });
+
+    ['broker','date'].forEach(id => $(id).addEventListener('input', () => { hideDone(); renderOutName(); }));
+    ADV.forEach(id => $(id).addEventListener('input', () => { hideDone(); renderAdvanced(); }));
+    $('btnResetAdv').addEventListener('click', () => {
+      ADV.forEach(id => { $(id).value = $(id).dataset.default; });
+      hideDone(); renderAdvanced();
     });
 
-    // Placeholder = today
-    document.getElementById('date').placeholder = todayParisISO() + ' (par défaut)';
+    // Glisser-déposer n'importe où sur la page
+    let dragDepth = 0;
+    const hasFiles = e => Array.from(e.dataTransfer?.types || []).includes('Files');
+    const endDrag = () => { dragDepth = 0; document.body.classList.remove('is-dragging'); };
+    window.addEventListener('dragenter', e => {
+      if (!hasFiles(e)) return;
+      e.preventDefault(); dragDepth++;
+      document.body.classList.add('is-dragging');
+    });
+    window.addEventListener('dragleave', e => {
+      if (!hasFiles(e)) return;
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (!dragDepth) endDrag();
+    });
+    window.addEventListener('dragover', e => {
+      if (!hasFiles(e)) return;
+      e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+    });
+    window.addEventListener('drop', e => {
+      if (!hasFiles(e)) return;
+      e.preventDefault(); endDrag();
+      const f = e.dataTransfer.files[0];
+      if (f) loadFile(f);
+    });
+
+    // ---- Init
+    $('date').value = todayParisISO();
+    renderOutName();
+    renderAdvanced();
+    renderBrokerList();
+    render();
+  })();
   </script>
 </body>
 </html>

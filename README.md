@@ -17,16 +17,19 @@ Interface web légère, sans serveur, fonctionnant entièrement dans le navigate
 INIT_LEADS_PRFR_YYYYMMDD000003.csv
 
 ```
+- Glisser-déposer du fichier n’importe où sur la page
+- Aperçu avant téléchargement : nombre de leads, mobiles / fixes, lignes à vérifier (email manquant, mal formé ou en double, numéro hors +33) — purement informatif, le fichier généré reste identique
 - Téléchargement direct, sans envoi de données vers un serveur
+- Aucune dépendance externe : une seule page HTML, thème clair et sombre
 
 ---
 
 ## 🪶 Utilisation
 
-1. Ouvrez [l’application en ligne](https://<votre-nom>.github.io/hello-brieux/)  
-2. Déposez votre fichier CSV brut (ex. export Facebook/Instagram)  
-3. Renseignez si besoin le `broker` et la `date`  
-4. Cliquez sur **Convertir & Télécharger**  
+1. Ouvrez [l’application en ligne](https://24tiy.github.io/Hello-Brieux/)
+2. Glissez l’export brut (ex. Facebook/Instagram) sur la page, ou choisissez-le
+3. Vérifiez le `broker` et la `date` (les codes fixes `PR · FR · FR · CRG` sont repliés)
+4. Contrôlez l’aperçu, puis cliquez sur **Télécharger le CSV**
 5. Le fichier normalisé est prêt à être utilisé dans vos outils internes DPR.
 
 ---
